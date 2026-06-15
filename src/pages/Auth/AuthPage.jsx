@@ -1,44 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye, EyeOff, Mail, Lock, User, Phone,
-  ArrowRight, Heart, Shield, Activity, Zap, Brain
+  ArrowRight, Heart, Shield, Activity, Zap, Brain, Sparkles, Check
 } from 'lucide-react';
 import { useAuthStore } from '../../store';
 
 const roles = [
-  { id: 'patient', label: 'Patient', icon: '🧑' },
-  { id: 'doctor',  label: 'Doctor',  icon: '👨‍⚕️' },
-  { id: 'admin',   label: 'Admin',   icon: '🛡️' },
+  { id: 'patient', label: 'Patient Portal', icon: '🧑', desc: 'Check symptoms & track health' },
+  { id: 'doctor',  label: 'Doctor Portal',  icon: '👨‍⚕️', desc: 'Consultations & schedules' },
+  { id: 'admin',   label: 'Admin Portal',   icon: '🛡️', desc: 'Manage clinic & analytics' },
 ];
 
-const floatingIcons = [
-  { icon: Heart,    color: '#ef4444', bg: '#fee2e2', x: '10%',  y: '20%',  delay: 0 },
-  { icon: Activity, color: '#2563eb', bg: '#dbeafe', x: '80%',  y: '15%',  delay: 0.5 },
-  { icon: Shield,   color: '#10b981', bg: '#d1fae5', x: '85%',  y: '65%',  delay: 1 },
-  { icon: Zap,      color: '#f59e0b', bg: '#fef3c7', x: '8%',   y: '70%',  delay: 1.5 },
-  { icon: Brain,    color: '#8b5cf6', bg: '#ede9fe', x: '45%',  y: '5%',   delay: 0.8 },
-];
-
-const socialBtns = [
-  {
-    label: 'Google', icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-    )
-  },
-  {
-    label: 'Apple', icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-      </svg>
-    )
-  },
+const floatingTelemetry = [
+  { label: "SYS_HEALTH", val: "99.8%", status: "OPTIMAL", color: "text-emerald-400" },
+  { label: "AI_ACCURACY", val: "96.5%", status: "INFERENCE", color: "text-cyan-400" },
+  { label: "NODE_STABILITY", val: "100%", status: "ACTIVE", color: "text-blue-400" },
 ];
 
 export default function AuthPage() {
@@ -55,11 +33,15 @@ export default function AuthPage() {
   const handleSubmit = async e => {
     e?.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 1200));
+
+    // Fix: extract username from email prefix if name is empty, ensuring custom user IDs are used
+    const displayName = form.name || (form.email ? form.email.split('@')[0] : (role === 'admin' ? 'Admin User' : role === 'doctor' ? 'Dr. Arjun Sharma' : 'Rahul Kumar'));
+
     login({
       id: Date.now(),
-      name: form.name || (role === 'admin' ? 'Admin User' : role === 'doctor' ? 'Dr. Arjun Sharma' : 'Rahul Kumar'),
-      email: form.email || 'rahul@medivision.ai',
+      name: displayName,
+      email: form.email || 'demo@medivision.ai',
       role,
     });
     setLoading(false);
@@ -69,237 +51,316 @@ export default function AuthPage() {
   const demoLogin = async (r = 'patient') => {
     setLoading(true);
     await new Promise(res => setTimeout(res, 800));
-    login({ id: 1, name: r === 'doctor' ? 'Dr. Arjun Sharma' : r === 'admin' ? 'Admin User' : 'Rahul Kumar', email: 'demo@medivision.ai', role: r });
+    const demoName = r === 'doctor' ? 'Dr. Arjun Sharma' : r === 'admin' ? 'Admin User' : 'Rahul Kumar';
+    login({ 
+      id: 1, 
+      name: demoName, 
+      email: `demo-${r}@medivision.ai`, 
+      role: r 
+    });
     setLoading(false);
     navigate(r === 'admin' ? '/admin' : r === 'doctor' ? '/doctor-dashboard' : '/dashboard');
   };
 
   return (
-    <div className="min-h-screen flex overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen w-full flex bg-[#070b13] text-white overflow-hidden relative font-sans selection:bg-blue-600 selection:text-white">
+      
+      {/* ── Ambient Radial Glows (Background) ── */}
+      <div className="absolute top-[-20%] left-[-20%] w-[70%] h-[70%] rounded-full opacity-30 blur-[150px] bg-gradient-to-br from-blue-700 to-transparent pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[70%] h-[70%] rounded-full opacity-25 blur-[150px] bg-gradient-to-tr from-cyan-500 to-transparent pointer-events-none" />
+      <div className="absolute top-[30%] left-[40%] w-[35%] h-[35%] rounded-full opacity-10 blur-[120px] bg-purple-600 pointer-events-none" />
 
-      {/* ══ LEFT PANEL — Illustration ══ */}
-      <div className="hidden lg:flex w-[52%] flex-shrink-0 flex-col items-center justify-center relative overflow-hidden"
-        style={{ background: 'linear-gradient(145deg, #e8f4ff 0%, #dbeafe 35%, #e0f7ff 65%, #f0fdf4 100%)' }}>
+      {/* ── Grid Overlay ── */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
+          backgroundSize: '32px 32px'
+        }}
+      />
 
-        {/* Grid background */}
-        <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2563eb" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-
-        {/* Decorative orbs */}
-        <div className="absolute top-16 left-12 w-48 h-48 rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }} />
-        <div className="absolute bottom-20 right-10 w-64 h-64 rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #06b6d4, transparent)' }} />
-
-        {/* Floating medical icons */}
-        {floatingIcons.map((fi, i) => (
-          <motion.div key={i}
-            className="absolute w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
-            style={{ left: fi.x, top: fi.y, background: fi.bg }}
-            animate={{ y: [0, -10, 0], rotate: [0, 5, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 3 + i, delay: fi.delay, ease: 'easeInOut' }}>
-            <fi.icon className="w-5 h-5" style={{ color: fi.color }} />
-          </motion.div>
-        ))}
-
-        {/* Main content */}
-        <div className="relative z-10 text-center px-12 max-w-lg">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)' }}>
-              <Heart className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-left">
-              <span className="text-2xl font-black text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>MediVision</span>
-              <span className="text-2xl font-black" style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: "'Poppins', sans-serif" }}> AI</span>
-            </div>
+      {/* ══ LEFT SIDEBAR — 3D Cyber-Healthcare Visuals ══ */}
+      <div className="hidden lg:flex w-[52%] flex-col relative justify-between p-12 border-r border-white/[0.04] bg-white/[0.01] backdrop-blur-[2px] z-10">
+        
+        {/* Top bar Logo */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500 shadow-[0_4px_20px_rgba(37,99,235,0.4)]">
+            <Heart className="w-5 h-5 text-white animate-pulse" />
           </div>
-
-          {/* Doctor Illustration */}
-          <motion.div animate={{ y: [0, -14, 0] }} transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-            className="relative mx-auto mb-6" style={{ width: 280, height: 280 }}>
-            <div className="absolute inset-0 rounded-full opacity-20 blur-2xl"
-              style={{ background: 'radial-gradient(circle, #2563eb 30%, transparent 70%)' }} />
-            <img src="/hero-doctor.png" alt="AI Doctor" className="relative z-10 w-full h-full object-contain drop-shadow-2xl"
-              onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-            <div className="relative z-10 w-full h-full items-center justify-center text-8xl" style={{ display:'none' }}>👨‍⚕️</div>
-          </motion.div>
-
-          <motion.h2 initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }}
-            className="text-3xl font-black text-slate-800 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Your Health,<br />
-            <span style={{ background:'linear-gradient(135deg,#2563eb,#06b6d4)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-              Powered by AI
-            </span>
-          </motion.h2>
-          <p className="text-slate-500 text-sm leading-relaxed mb-8">
-            The most advanced healthcare platform with AI symptom analysis, smart diagnostics, real-time monitoring, and instant emergency response.
-          </p>
-
-          {/* Trust indicators */}
-          <div className="flex items-center justify-center gap-6">
-            {[
-              { v: '2M+', l: 'Patients' },
-              { v: '98%', l: 'Accuracy' },
-              { v: '500+', l: 'Hospitals' },
-            ].map(s => (
-              <div key={s.l} className="text-center">
-                <p className="text-xl font-black" style={{ color: '#2563eb', fontFamily:"'Poppins',sans-serif" }}>{s.v}</p>
-                <p className="text-xs text-slate-400 font-medium">{s.l}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Trusted by */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="flex -space-x-2">
-              {['👩‍⚕️','👨‍⚕️','🧑‍⚕️','👩','👨'].map((e,i)=>(
-                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center text-sm shadow">{e}</div>
-              ))}
+          <div className="leading-none">
+            <div className="text-xl font-extrabold tracking-tight">
+              MediVision<span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> AI</span>
             </div>
-            <p className="text-xs text-slate-500 ml-1"><span className="font-bold text-slate-700">10M+ users</span> trust MediVision</p>
+            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 block">Futuristic Healthcare</span>
           </div>
         </div>
-      </div>
 
-      {/* ══ RIGHT PANEL — Form ══ */}
-      <div className="flex-1 flex flex-col justify-center items-center px-8 lg:px-14 py-10 bg-white">
-        <motion.div initial={{ opacity:0, y:24 }} animate={{ opacity:1, y:0 }} transition={{ duration:0.5, ease:[0.16,1,0.3,1] }}
-          className="w-full max-w-[400px]">
-
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 mb-8">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background:'linear-gradient(135deg,#2563eb,#06b6d4)' }}>
-              <Heart className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-black text-slate-800" style={{ fontFamily:"'Poppins',sans-serif" }}>MediVision <span style={{ color:'#2563eb' }}>AI</span></span>
+        {/* Dynamic Telemetry Display & 3D Illustration */}
+        <div className="my-auto max-w-lg mx-auto w-full text-center relative">
+          
+          {/* Animated Tech Ring Container */}
+          <div className="relative w-[340px] h-[340px] mx-auto flex items-center justify-center mb-8">
+            {/* Spinning Neon Outers */}
+            <div className="absolute inset-0 rounded-full border border-dashed border-cyan-500/20 animate-[spin_60s_linear_infinite]" />
+            <div className="absolute inset-6 rounded-full border border-blue-500/10 animate-[spin_30s_linear_infinite_reverse]" />
+            
+            {/* Pulsing Backlit Glow */}
+            <div className="absolute inset-16 rounded-full bg-blue-500/10 blur-3xl animate-pulse" />
+            
+            {/* 3D Medical Illustration Image */}
+            <motion.div 
+              animate={{ y: [0, -12, 0] }} 
+              transition={{ repeat: Infinity, duration: 4.5, ease: 'easeInOut' }}
+              className="relative z-10 w-[240px] h-[240px] rounded-full overflow-hidden border border-white/[0.08] bg-slate-900/60 p-4 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+            >
+              <img 
+                src="/doctor-login.png" 
+                alt="MediVision Tech" 
+                className="w-full h-full object-contain drop-shadow-[0_10px_20px_rgba(6,182,212,0.3)]"
+                onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+              />
+              <div className="hidden w-full h-full items-center justify-center text-7xl select-none">👨‍⚕️</div>
+            </motion.div>
           </div>
 
-          <p className="text-slate-400 text-sm mb-1 font-medium">
-            {mode === 'login' ? 'Sign in to your account' : 'Create your account'}
+          <motion.h2 
+            initial={{ opacity:0, y:15 }} 
+            animate={{ opacity:1, y:0 }} 
+            transition={{ delay:0.2 }}
+            className="text-4xl font-extrabold tracking-tight mb-4 leading-tight"
+            style={{ fontFamily: "'Poppins', sans-serif" }}
+          >
+            Smart Diagnostics<br />
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+              Accelerated by Intelligence
+            </span>
+          </motion.h2>
+          
+          <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto mb-8 font-medium">
+            Connect medical sensors, perform automated diagnostic screenings, and track vitals through our state-of-the-art secure neural framework.
           </p>
-          <h1 className="text-3xl font-black text-slate-900 mb-6" style={{ fontFamily:"'Poppins',sans-serif" }}>
-            {mode === 'login' ? 'Hello Again! 👋' : 'Get Started 🚀'}
-          </h1>
 
-          {/* Role Selector */}
-          <div className="flex gap-1.5 p-1 rounded-xl mb-6" style={{ background:'#f1f5fd' }}>
-            {roles.map(r => (
-              <button key={r.id} onClick={() => setRole(r.id)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5"
-                style={{
-                  background: role===r.id ? 'white' : 'transparent',
-                  color: role===r.id ? '#2563eb' : '#64748b',
-                  boxShadow: role===r.id ? '0 2px 8px rgba(37,99,235,0.1)' : 'none',
-                }}>
-                <span>{r.icon}</span> {r.label}
-              </button>
+          {/* Telemetry statistics grid */}
+          <div className="grid grid-cols-3 gap-3 p-4 rounded-2xl border border-white/[0.04] bg-white/[0.02] backdrop-blur-sm max-w-md mx-auto">
+            {floatingTelemetry.map((t, idx) => (
+              <div key={idx} className="text-center relative">
+                {idx > 0 && <div className="absolute left-0 top-1/4 h-1/2 w-[1px] bg-white/[0.08]" />}
+                <p className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">{t.label}</p>
+                <p className={`text-xl font-extrabold mt-1 ${t.color}`}>{t.val}</p>
+                <p className="text-[8px] font-bold text-slate-400/80 mt-0.5 tracking-widest">{t.status}</p>
+              </div>
             ))}
           </div>
 
+        </div>
+
+        {/* Footer info */}
+        <div className="flex items-center justify-between text-xs text-slate-500 font-semibold border-t border-white/[0.04] pt-6">
+          <div className="flex items-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Secure End-to-End HIPAA Cryptography</span>
+          </div>
+          <span>v2.1.0</span>
+        </div>
+
+      </div>
+
+      {/* ══ RIGHT SIDEBAR — Glassmorphic Onboarding Form ══ */}
+      <div className="flex-1 flex flex-col justify-center items-center px-6 md:px-12 lg:px-16 py-12 relative z-10">
+        
+        {/* Mobile Header Logo */}
+        <div className="absolute top-8 left-8 flex lg:hidden items-center gap-2">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-600 to-cyan-500">
+            <Heart className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-md font-extrabold tracking-tight">MediVision <span className="text-cyan-400">AI</span></span>
+        </div>
+
+        <motion.div 
+          initial={{ opacity:0, y:20 }} 
+          animate={{ opacity:1, y:0 }} 
+          transition={{ duration:0.6, ease:[0.16, 1, 0.3, 1] }}
+          className="w-full max-w-[420px] bg-white/[0.02] border border-white/[0.06] shadow-[0_24px_80px_rgba(0,0,0,0.6)] rounded-[32px] p-8 md:p-10 backdrop-blur-xl"
+        >
+          {/* Header */}
+          <div className="mb-8">
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">
+              {mode === 'login' ? 'Security Gateway' : 'Ecosystem Entry'}
+            </span>
+            <h1 className="text-3xl font-extrabold tracking-tight mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              {mode === 'login' ? 'Portal Access' : 'Create Profile'}
+            </h1>
+            <p className="text-slate-400 text-xs mt-1.5 font-medium">
+              Select your system node role below to connect.
+            </p>
+          </div>
+
+          {/* Sliding Role Selector */}
+          <div className="relative flex gap-1 p-1 rounded-2xl bg-white/[0.03] border border-white/[0.04] mb-6">
+            {roles.map(r => (
+              <button 
+                key={r.id} 
+                type="button" 
+                onClick={() => setRole(r.id)}
+                className="flex-1 py-3 rounded-xl text-xs font-bold transition-all duration-300 relative z-10 flex flex-col items-center gap-0.5 cursor-pointer"
+                style={{ color: role === r.id ? 'white' : '#94a3b8' }}
+              >
+                <span className="text-sm">{r.icon}</span>
+                <span>{r.label.split(' ')[0]}</span>
+              </button>
+            ))}
+            
+            {/* Sliding Pill Background */}
+            <div 
+              className="absolute top-1 bottom-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 shadow-[0_4px_16px_rgba(37,99,235,0.4)] transition-all duration-300 pointer-events-none"
+              style={{
+                left: role === 'patient' ? '4px' : role === 'doctor' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 1px)',
+                width: 'calc(33.33% - 5px)'
+              }}
+            />
+          </div>
+
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'register' && (
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input className="input-field pl-11" placeholder="Full Name" value={form.name} onChange={set('name')} />
-              </div>
-            )}
+            
+            <AnimatePresence mode="popLayout">
+              {mode === 'register' && (
+                <motion.div 
+                  initial={{ opacity:0, y:-10 }}
+                  animate={{ opacity:1, y:0 }}
+                  exit={{ opacity:0, y:-10 }}
+                  className="relative"
+                >
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    required
+                    type="text" 
+                    className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-blue-500/50 focus:bg-white/[0.04] rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-500" 
+                    placeholder="Full Name" 
+                    value={form.name} 
+                    onChange={set('name')} 
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input type="email" className="input-field pl-11" placeholder="Enter your email" value={form.email} onChange={set('email')} />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                required
+                type="email" 
+                className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-blue-500/50 focus:bg-white/[0.04] rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-500" 
+                placeholder="Secure Email" 
+                value={form.email} 
+                onChange={set('email')} 
+              />
             </div>
 
-            {mode === 'register' && (
-              <div className="relative">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input className="input-field pl-11" placeholder="Phone number" value={form.phone} onChange={set('phone')} />
-              </div>
-            )}
+            <AnimatePresence mode="popLayout">
+              {mode === 'register' && (
+                <motion.div 
+                  initial={{ opacity:0, y:-10 }}
+                  animate={{ opacity:1, y:0 }}
+                  exit={{ opacity:0, y:-10 }}
+                  className="relative"
+                >
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="tel" 
+                    className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-blue-500/50 focus:bg-white/[0.04] rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-500" 
+                    placeholder="Mobile Identifier (optional)" 
+                    value={form.phone} 
+                    onChange={set('phone')} 
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="text-sm font-semibold text-slate-600">Password</label>
-                {mode === 'login' && <a href="#" className="text-xs font-semibold" style={{ color:'#2563eb' }}>Forgot Password?</a>}
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type={showPass?'text':'password'} className="input-field pl-11 pr-11"
-                  placeholder="Enter your password" value={form.password} onChange={set('password')} />
-                <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-                  {showPass ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
-                </button>
-              </div>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                required
+                type={showPass ? 'text' : 'password'} 
+                className="w-full bg-white/[0.02] border border-white/[0.08] focus:border-blue-500/50 focus:bg-white/[0.04] rounded-2xl pl-11 pr-12 py-3.5 text-sm outline-none transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-500" 
+                placeholder="Access Keyphrase" 
+                value={form.password} 
+                onChange={set('password')} 
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {showPass ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
+              </button>
             </div>
 
             {mode === 'login' && (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded accent-blue-600" />
-                <span className="text-sm text-slate-500">Remember me</span>
-              </label>
+              <div className="flex justify-between items-center text-xs font-semibold pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-300 select-none">
+                  <input type="checkbox" className="w-4 h-4 rounded-lg bg-white/5 border-white/10 accent-blue-600 cursor-pointer" />
+                  <span>Persistent Session</span>
+                </label>
+                <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">Recover Keys</a>
+              </div>
             )}
 
-            <motion.button type="submit" disabled={loading} whileTap={{ scale:0.97 }}
-              className="btn btn-primary w-full py-3.5 text-sm rounded-xl"
-              style={{ background:'linear-gradient(135deg,#2563eb,#0ea5e9)', boxShadow:'0 4px 18px rgba(37,99,235,0.35)' }}>
+            {/* Action Submit Button */}
+            <motion.button 
+              type="submit" 
+              disabled={loading} 
+              whileTap={{ scale:0.98 }}
+              className="w-full py-3.5 mt-2 rounded-2xl font-bold text-sm tracking-wide bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 shadow-[0_8px_30px_rgba(37,99,235,0.3)] hover:shadow-[0_8px_30px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center gap-2 text-white cursor-pointer disabled:opacity-50"
+            >
               {loading ? (
-                <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="4" className="opacity-30"/><path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Please wait...</>
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  <span>Syncing Nodes...</span>
+                </div>
               ) : (
-                <>{mode==='login' ? 'Login' : 'Create Account'} <ArrowRight className="w-4 h-4"/></>
+                <>
+                  <span>{mode === 'login' ? 'Establish Access' : 'Register Profile'}</span> 
+                  <ArrowRight className="w-4 h-4" />
+                </>
               )}
             </motion.button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-slate-100" />
-            <span className="text-xs text-slate-400">Or continue with</span>
-            <div className="flex-1 h-px bg-slate-100" />
-          </div>
-
-          {/* Social */}
-          <div className="flex gap-3">
-            {socialBtns.map(s => (
-              <motion.button key={s.label} whileTap={{ scale:0.96 }} onClick={() => demoLogin('patient')}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all"
-                style={{ borderColor:'#e8edf8' }}>
-                {s.icon} {s.label}
-              </motion.button>
-            ))}
-          </div>
-
-          {/* Switch */}
-          <p className="text-center text-sm text-slate-500 mt-6">
-            {mode==='login' ? "Don't have an account? " : 'Already have an account? '}
-            <button onClick={() => setMode(m => m==='login'?'register':'login')}
-              className="font-bold hover:underline" style={{ color:'#2563eb' }}>
-              {mode==='login' ? 'Sign up' : 'Sign in'}
+          {/* Mode Switcher */}
+          <p className="text-center text-xs text-slate-400 mt-6 font-semibold">
+            {mode === 'login' ? "New node to the network? " : 'Authorized keys exist? '}
+            <button 
+              type="button" 
+              onClick={() => setMode(m => m === 'login' ? 'register' : 'login')}
+              className="text-cyan-400 hover:text-cyan-300 font-extrabold hover:underline cursor-pointer"
+            >
+              {mode === 'login' ? 'Register Account' : 'Gateway Login'}
             </button>
           </p>
 
-          {/* Quick Demo */}
-          <div className="mt-5 p-3.5 rounded-2xl border" style={{ background:'#f8faff', borderColor:'#dbeafe' }}>
-            <p className="text-xs font-bold text-center mb-2.5" style={{ color:'#2563eb' }}>⚡ Quick Demo Access</p>
-            <div className="flex gap-2">
+          {/* Developer/Quick Demo Access Console */}
+          <div className="mt-8 pt-6 border-t border-white/[0.06] relative">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-[8px] font-bold tracking-widest text-slate-500 uppercase bg-[#070b13] border border-white/[0.06] rounded-full">
+              Bypass Demo Console
+            </span>
+            
+            <div className="grid grid-cols-3 gap-2 mt-2">
               {roles.map(r => (
-                <button key={r.id} onClick={() => demoLogin(r.id)}
-                  className="flex-1 text-xs py-2 rounded-xl font-semibold transition-all border"
-                  style={{ background:'white', color:'#2563eb', borderColor:'#bfdbfe' }}
-                  onMouseEnter={e => { e.target.style.background='#2563eb'; e.target.style.color='white'; }}
-                  onMouseLeave={e => { e.target.style.background='white'; e.target.style.color='#2563eb'; }}>
-                  {r.icon} {r.label}
+                <button 
+                  key={r.id} 
+                  type="button" 
+                  onClick={() => demoLogin(r.id)}
+                  className="text-[10px] py-3 rounded-xl border border-white/[0.04] bg-white/[0.01] hover:bg-blue-600/10 hover:border-blue-500/30 transition-all font-bold flex flex-col items-center gap-1 cursor-pointer"
+                >
+                  <span className="text-sm">{r.icon}</span>
+                  <span className="text-slate-300">{r.label.split(' ')[0]}</span>
                 </button>
               ))}
             </div>
           </div>
+
         </motion.div>
       </div>
     </div>
