@@ -407,10 +407,10 @@ export default function Layout() {
                     style={{ borderRadius: 16 }}
                   >
                     {[
-                      { emoji: '👤', label: 'My Profile',   action: () => {} },
+                      { emoji: '👤', label: 'My Profile',   action: () => navigate('/history') },
                       { emoji: '⭐', label: 'Health Score',  action: () => navigate('/health-score') },
                       { emoji: '📊', label: 'Analytics',     action: () => navigate('/analytics') },
-                      { emoji: '⚙️', label: 'Settings',      action: () => {} },
+                      { emoji: '⚙️', label: 'Settings',      action: () => navigate('/notifications') },
                     ].map(item => (
                       <button
                         key={item.label}

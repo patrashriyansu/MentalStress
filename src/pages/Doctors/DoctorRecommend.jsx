@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { DOCTORS } from '../../data/mockData';
+import { useAuthStore } from '../../store';
 import { Star, MapPin, Search, Filter, Heart, Clock, ChevronRight, Verified } from 'lucide-react';
 
 const SPECS = ['All Doctors','Cardiologist','Neurologist','Dermatologist','Orthopedic','Diabetologist','Psychiatrist'];
@@ -15,6 +15,7 @@ const avatarColors = [
 ];
 
 export default function DoctorFinder() {
+  const { getDoctors } = useAuthStore();
   const [search, setSearch] = useState('');
   const [spec, setSpec] = useState('All Doctors');
   const [avail, setAvail] = useState('All');
@@ -22,6 +23,22 @@ export default function DoctorFinder() {
   const [liked, setLiked] = useState([]);
   const [view, setView] = useState('grid');
   const navigate = useNavigate();
+
+  // Source doctors from registered users in the store
+  const DOCTORS = getDoctors().map((d, i) => ({
+    id: d.id,
+    name: d.name,
+    specialty: d.specialty || 'General Medicine',
+    hospital: d.hospital || 'MediVision Clinic',
+    rating: d.rating || 4.5,
+    experience: d.experience || 0,
+    fee: d.fee || 500,
+    available: true,
+    image: null,
+    nextAvailable: 'Today',
+    email: d.email,
+    phone: d.phone,
+  }));
 
   const filtered = DOCTORS.filter(d => {
     const ms = d.name.toLowerCase().includes(search.toLowerCase()) || d.specialty.toLowerCase().includes(search.toLowerCase());
@@ -79,6 +96,17 @@ export default function DoctorFinder() {
       </div>
 
       {/* Doctor Grid */}
+      {filtered.length === 0 ? (
+        <div className="card" style={{ padding: '60px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>👨‍⚕️</div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#334155', marginBottom: 8 }}>No Doctors Found</h3>
+          <p style={{ fontSize: 14, color: '#94a3b8', maxWidth: 360, margin: '0 auto' }}>
+            {DOCTORS.length === 0
+              ? 'No doctors have joined the platform yet. Doctors can register using the Sign Up page with the "Doctor" role.'
+              : 'No doctors match your current search filters. Try adjusting your search.'}
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filtered.map((d, i) => {
           const [bgA, textA] = avatarColors[i % avatarColors.length];
@@ -146,6 +174,7 @@ export default function DoctorFinder() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

@@ -1,424 +1,336 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Heart, Shield, Activity, Zap, Brain, Stethoscope, Wifi } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Heart, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../store';
 
 const ROLES = [
-  { id: 'patient', label: 'Patient',  emoji: '🧑',  color: '#3b82f6', desc: 'Track & manage your health' },
-  { id: 'doctor',  label: 'Doctor',   emoji: '👨‍⚕️', color: '#06b6d4', desc: 'Manage patients & schedules' },
-  { id: 'admin',   label: 'Admin',    emoji: '🛡️',  color: '#8b5cf6', desc: 'Full platform control' },
+  { id: 'patient', label: 'Patient',  icon: '🧑‍💼' },
+  { id: 'doctor',  label: 'Doctor',   icon: '👨‍⚕️' },
+  { id: 'admin',   label: 'Admin',    icon: '🛡️'  },
 ];
 
-const FEATURES = [
-  { icon: Brain,       label: 'AI Diagnostics',      desc: 'Neural-powered disease prediction',  color: '#3b82f6' },
-  { icon: Activity,    label: 'Live Vitals',          desc: 'Real-time IoT health monitoring',    color: '#06b6d4' },
-  { icon: Shield,      label: 'HIPAA Secure',         desc: 'Military-grade data encryption',     color: '#10b981' },
-  { icon: Stethoscope, label: '500+ Specialists',     desc: 'Instant expert consultations',       color: '#f59e0b' },
-];
+// Google SVG
+const GoogleIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+  </svg>
+);
 
-const STATS = [
-  { value: '2M+',  label: 'Active Patients' },
-  { value: '98.6%',label: 'AI Accuracy' },
-  { value: '< 8s', label: 'Emergency ETA' },
-];
-
-// Animated floating particle component
-function Particle({ x, y, size, delay, color }) {
-  return (
-    <motion.div
-      className="absolute rounded-full pointer-events-none"
-      style={{ left: x, top: y, width: size, height: size, background: color, filter: 'blur(1px)' }}
-      animate={{ y: [0, -40, 0], opacity: [0.15, 0.5, 0.15], scale: [1, 1.3, 1] }}
-      transition={{ duration: 4 + delay, repeat: Infinity, delay, ease: 'easeInOut' }}
-    />
-  );
-}
+// Facebook SVG
+const FacebookIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+  </svg>
+);
 
 export default function AuthPage() {
-  const [mode, setMode]         = useState('login');
-  const [role, setRole]         = useState('patient');
+  const [mode, setMode]       = useState('login');
+  const [role, setRole]       = useState('patient');
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [step, setStep]         = useState(0); // animated step counter for left panel
-  const [form, setForm]         = useState({ name: '', email: '', phone: '', password: '' });
-  const login    = useAuthStore(s => s.login);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [success, setSuccess] = useState('');
+  const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '' });
+
+  const { login, registerUser, getUserByEmail } = useAuthStore();
   const navigate = useNavigate();
 
-  const setField = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
-
-  // Cycle through feature highlights on left panel
-  useEffect(() => {
-    const t = setInterval(() => setStep(s => (s + 1) % FEATURES.length), 2800);
-    return () => clearInterval(t);
-  }, []);
+  const setField = k => e => { setForm(f => ({ ...f, [k]: e.target.value })); setError(''); };
 
   const handleSubmit = async e => {
-    e?.preventDefault();
+    e.preventDefault();
+    setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1400));
+    await new Promise(r => setTimeout(r, 1000));
 
-    // Use full name if given, else extract from email, else role default
-    const displayName =
-      form.name.trim() ||
-      (form.email ? form.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : null) ||
-      (role === 'admin' ? 'Admin User' : role === 'doctor' ? 'Dr. Arjun Sharma' : 'New User');
+    if (mode === 'register') {
+      // Check if email already exists
+      const existing = getUserByEmail(form.email.toLowerCase().trim());
+      if (existing) {
+        setError('An account with this email already exists. Please sign in.');
+        setLoading(false);
+        return;
+      }
+      if (!form.name.trim()) { setError('Please enter your full name.'); setLoading(false); return; }
+      if (form.password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return; }
 
-    login({ id: Date.now(), name: displayName, email: form.email, role });
-    setLoading(false);
-    navigate(role === 'admin' ? '/admin' : role === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+      const newUser = {
+        id: Date.now(),
+        name: form.name.trim(),
+        email: form.email.toLowerCase().trim(),
+        phone: form.phone.trim(),
+        password: form.password,
+        role,
+        createdAt: new Date().toISOString(),
+      };
+      registerUser(newUser);
+      login(newUser);
+      setLoading(false);
+      navigate(role === 'admin' ? '/admin' : role === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+
+    } else {
+      // Login — validate against stored users
+      const user = getUserByEmail(form.email.toLowerCase().trim());
+      if (!user) {
+        setError('No account found with this email. Please register first.');
+        setLoading(false);
+        return;
+      }
+      if (user.password !== form.password) {
+        setError('Incorrect password. Please try again.');
+        setLoading(false);
+        return;
+      }
+      login(user);
+      setLoading(false);
+      navigate(user.role === 'admin' ? '/admin' : user.role === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+    }
   };
 
-  const demoLogin = async (r = 'patient') => {
-    setLoading(true);
-    await new Promise(res => setTimeout(res, 900));
-    const names = { patient: 'Alex Johnson', doctor: 'Dr. Arjun Sharma', admin: 'Admin User' };
-    login({ id: Date.now(), name: names[r], email: `${r}@demo.medivision.ai`, role: r });
-    setLoading(false);
-    navigate(r === 'admin' ? '/admin' : r === 'doctor' ? '/doctor-dashboard' : '/dashboard');
-  };
-
-  const activeRole = ROLES.find(r => r.id === role);
-
-  // Particles config
-  const particles = [
-    { x: '8%',  y: '15%', size: 6,  delay: 0,   color: 'rgba(59,130,246,0.6)' },
-    { x: '85%', y: '20%', size: 8,  delay: 1.2, color: 'rgba(6,182,212,0.6)' },
-    { x: '12%', y: '60%', size: 5,  delay: 0.6, color: 'rgba(139,92,246,0.6)' },
-    { x: '78%', y: '70%', size: 7,  delay: 1.8, color: 'rgba(59,130,246,0.6)' },
-    { x: '45%', y: '8%',  size: 5,  delay: 0.3, color: 'rgba(16,185,129,0.6)' },
-    { x: '90%', y: '45%', size: 4,  delay: 2.1, color: 'rgba(245,158,11,0.5)' },
-    { x: '25%', y: '88%', size: 6,  delay: 1.4, color: 'rgba(6,182,212,0.5)' },
-    { x: '65%', y: '85%', size: 4,  delay: 0.9, color: 'rgba(139,92,246,0.5)' },
+  // Each geometric shape for left panel
+  const shapes = [
+    { size: 420, top: '-10%', left: '-18%', opacity: 0.55, rotate: 30 },
+    { size: 320, top: '30%', left: '-8%', opacity: 0.35, rotate: -15 },
+    { size: 260, top: '60%', left: '18%', opacity: 0.4, rotate: 50 },
+    { size: 200, top: '-5%', left: '45%', opacity: 0.25, rotate: 10 },
   ];
 
   return (
-    <div className="min-h-screen w-full flex overflow-hidden relative" style={{ background: '#060912', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: '100vh', display: 'flex', background: '#f0f4f8', fontFamily: "'Inter', sans-serif", alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
 
-      {/* ── Deep background glows ── */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute" style={{ top: '-15%', left: '-10%', width: '60%', height: '60%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-        <div className="absolute" style={{ bottom: '-15%', right: '-10%', width: '60%', height: '60%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-        <div className="absolute" style={{ top: '40%', left: '35%', width: '30%', height: '30%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+      {/* Outer Card */}
+      <div style={{ display: 'flex', width: '100%', maxWidth: 920, minHeight: 560, borderRadius: 28, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.15)', background: 'white' }}>
 
-        {/* Subtle grid */}
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
-          backgroundSize: '48px 48px'
-        }} />
+        {/* ══ LEFT PANEL — Colorful with geometry ══ */}
+        <div style={{ width: '38%', position: 'relative', overflow: 'hidden', background: 'linear-gradient(145deg, #2563eb 0%, #1d4ed8 40%, #0891b2 80%, #06b6d4 100%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 32px', flexShrink: 0 }} className="hidden md:flex">
 
-        {/* Floating particles */}
-        {particles.map((p, i) => <Particle key={i} {...p} />)}
-      </div>
+          {/* Geometric shapes */}
+          {shapes.map((s, i) => (
+            <div key={i} style={{
+              position: 'absolute', width: s.size, height: s.size,
+              top: s.top, left: s.left,
+              borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+              background: 'rgba(255,255,255,' + s.opacity + ')',
+              transform: `rotate(${s.rotate}deg)`,
+              pointerEvents: 'none',
+            }} />
+          ))}
 
-      {/* ══════════════════════════════════════════════════════
-          LEFT PANEL — Hero / Showcase
-      ══════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex w-[52%] flex-col justify-between p-14 relative z-10 border-r" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-
-        {/* Logo */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', boxShadow: '0 8px 24px rgba(37,99,235,0.4)' }}>
-            <Heart className="w-6 h-6 text-white" />
+          {/* Logo */}
+          <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+              <Heart style={{ width: 20, height: 20, color: 'white' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: 'white', letterSpacing: '-0.03em', fontFamily: "'Poppins', sans-serif" }}>MediVision AI</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Smart Healthcare</div>
+            </div>
           </div>
-          <div>
-            <div className="text-xl font-black text-white" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.03em' }}>
-              MediVision<span style={{ background: 'linear-gradient(135deg, #60a5fa, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}> AI</span>
-            </div>
-            <div className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Smart Healthcare Platform</div>
-          </div>
-        </motion.div>
 
-        {/* Center hero section */}
-        <div className="flex-1 flex flex-col justify-center max-w-lg">
-
-          {/* Headline */}
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6 text-xs font-bold text-cyan-400 border" style={{ background: 'rgba(6,182,212,0.08)', borderColor: 'rgba(6,182,212,0.2)' }}>
-              <Wifi className="w-3 h-3" />
-              Now Live — v2.1 Neural Framework
-            </div>
-
-            <h1 className="text-5xl font-black text-white mb-5 leading-[1.1]" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.03em' }}>
-              Healthcare<br />
-              <span style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #06b6d4 50%, #34d399 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                Reimagined by AI
-              </span>
-            </h1>
-            <p className="text-slate-400 text-base leading-relaxed font-medium mb-10">
-              The world's most advanced AI-powered health ecosystem. Diagnose, monitor, consult and respond — all in one intelligent platform.
-            </p>
-          </motion.div>
-
-          {/* Animated feature highlight card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mb-8">
-            <div className="rounded-3xl p-6 border relative overflow-hidden" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)' }}>
-              {/* Glow accent */}
-              <div className="absolute top-0 left-0 w-full h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${FEATURES[step].color}, transparent)` }} />
-
-              <div className="flex items-start gap-4">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={step}
-                    initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
-                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${FEATURES[step].color}18`, border: `1px solid ${FEATURES[step].color}30` }}
-                  >
-                    {React.createElement(FEATURES[step].icon, { className: 'w-6 h-6', style: { color: FEATURES[step].color } })}
-                  </motion.div>
-                </AnimatePresence>
-
-                <div className="flex-1 min-w-0">
-                  <AnimatePresence mode="wait">
-                    <motion.div key={step} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.35 }}>
-                      <p className="text-white font-bold text-lg mb-1">{FEATURES[step].label}</p>
-                      <p className="text-slate-400 text-sm">{FEATURES[step].desc}</p>
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-
-                {/* Step dots */}
-                <div className="flex flex-col gap-1.5 pt-1">
-                  {FEATURES.map((_, i) => (
-                    <button key={i} onClick={() => setStep(i)} className="w-1.5 rounded-full transition-all duration-300"
-                      style={{ height: i === step ? 20 : 6, background: i === step ? FEATURES[step].color : 'rgba(255,255,255,0.15)' }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Stats row */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-            className="grid grid-cols-3 gap-4">
-            {STATS.map(s => (
-              <div key={s.label} className="text-center p-4 rounded-2xl border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.05)' }}>
-                <div className="text-2xl font-black text-white mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{s.value}</div>
-                <div className="text-xs text-slate-500 font-semibold">{s.label}</div>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>All systems operational</span>
-          </div>
-          <span>HIPAA · ISO 27001 · SOC 2</span>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════
-          RIGHT PANEL — Auth Form
-      ══════════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col justify-center items-center px-6 md:px-10 lg:px-16 py-12 relative z-10">
-
-        {/* Mobile logo */}
-        <div className="flex lg:hidden items-center gap-2 mb-10">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2563eb, #06b6d4)', boxShadow: '0 6px 20px rgba(37,99,235,0.4)' }}>
-            <Heart className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-black text-white" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            MediVision<span style={{ color: '#06b6d4' }}> AI</span>
-          </span>
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-[440px]"
-        >
-          {/* Card */}
-          <div className="rounded-[28px] border p-8 md:p-10 relative overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(24px)', boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset' }}>
-
-            {/* Top accent glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(99,179,237,0.6), transparent)' }} />
-
-            {/* Mode toggle */}
-            <div className="flex items-center gap-1 p-1 rounded-2xl mb-8" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              {['login', 'register'].map(m => (
-                <button key={m} type="button" onClick={() => setMode(m)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all duration-300 cursor-pointer"
-                  style={{
-                    background: mode === m ? 'rgba(255,255,255,0.08)' : 'transparent',
-                    color: mode === m ? 'white' : 'rgba(148,163,184,1)',
-                    boxShadow: mode === m ? '0 2px 12px rgba(0,0,0,0.3)' : 'none',
-                  }}>
-                  {m === 'login' ? 'Sign In' : 'Register'}
-                </button>
-              ))}
-            </div>
-
-            {/* Greeting */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-black text-white mb-1" style={{ fontFamily: "'Poppins', sans-serif", letterSpacing: '-0.02em' }}>
-                {mode === 'login' ? 'Welcome back 👋' : 'Create account 🚀'}
-              </h2>
-              <p className="text-slate-500 text-sm font-medium">
-                {mode === 'login' ? 'Sign in to your MediVision account' : 'Join 2M+ patients and doctors worldwide'}
-              </p>
-            </div>
-
-            {/* Role Selector */}
-            <div className="grid grid-cols-3 gap-2 mb-6">
-              {ROLES.map(r => (
-                <button key={r.id} type="button" onClick={() => setRole(r.id)}
-                  className="flex flex-col items-center gap-1 py-3 px-2 rounded-2xl transition-all duration-300 border cursor-pointer"
-                  style={{
-                    background: role === r.id ? `${r.color}15` : 'rgba(255,255,255,0.02)',
-                    borderColor: role === r.id ? `${r.color}50` : 'rgba(255,255,255,0.06)',
-                    boxShadow: role === r.id ? `0 0 20px ${r.color}20` : 'none',
-                  }}>
-                  <span className="text-xl">{r.emoji}</span>
-                  <span className="text-xs font-bold" style={{ color: role === r.id ? r.color : 'rgba(148,163,184,1)' }}>{r.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <AnimatePresence>
-                {mode === 'register' && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="relative overflow-hidden">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(100,116,139,1)' }} />
-                    <input
-                      type="text" placeholder="Full name"
-                      value={form.name} onChange={setField('name')}
-                      className="w-full rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white outline-none transition-all"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'inherit' }}
-                      onFocus={e => { e.target.style.borderColor = activeRole.color + '60'; e.target.style.boxShadow = `0 0 0 3px ${activeRole.color}15`; }}
-                      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.boxShadow = 'none'; }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(100,116,139,1)' }} />
-                <input
-                  required type="email" placeholder="Email address"
-                  value={form.email} onChange={setField('email')}
-                  className="w-full rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white outline-none transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'inherit' }}
-                  onFocus={e => { e.target.style.borderColor = activeRole.color + '60'; e.target.style.boxShadow = `0 0 0 3px ${activeRole.color}15`; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.boxShadow = 'none'; }}
-                />
-              </div>
-
-              <AnimatePresence>
-                {mode === 'register' && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="relative overflow-hidden">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(100,116,139,1)' }} />
-                    <input
-                      type="tel" placeholder="Phone (optional)"
-                      value={form.phone} onChange={setField('phone')}
-                      className="w-full rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white outline-none transition-all"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'inherit' }}
-                      onFocus={e => { e.target.style.borderColor = activeRole.color + '60'; e.target.style.boxShadow = `0 0 0 3px ${activeRole.color}15`; }}
-                      onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.boxShadow = 'none'; }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(100,116,139,1)' }} />
-                <input
-                  required type={showPass ? 'text' : 'password'} placeholder="Password"
-                  value={form.password} onChange={setField('password')}
-                  className="w-full rounded-2xl pl-11 pr-12 py-3.5 text-sm text-white outline-none transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', fontFamily: 'inherit' }}
-                  onFocus={e => { e.target.style.borderColor = activeRole.color + '60'; e.target.style.boxShadow = `0 0 0 3px ${activeRole.color}15`; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.boxShadow = 'none'; }}
-                />
-                <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
-                  style={{ color: 'rgba(100,116,139,1)' }}>
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {mode === 'login' && (
-                <div className="flex justify-between items-center text-xs">
-                  <label className="flex items-center gap-2 text-slate-500 cursor-pointer select-none">
-                    <input type="checkbox" className="rounded accent-blue-500 cursor-pointer" />
-                    Remember me
-                  </label>
-                  <button type="button" className="font-bold hover:text-white transition-colors" style={{ color: activeRole.color }}>Forgot password?</button>
-                </div>
-              )}
-
-              {/* Submit */}
-              <motion.button
-                type="submit" disabled={loading}
-                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                className="w-full py-4 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
-                style={{
-                  background: `linear-gradient(135deg, ${activeRole.color}, ${activeRole.id === 'patient' ? '#06b6d4' : activeRole.id === 'doctor' ? '#3b82f6' : '#7c3aed'})`,
-                  boxShadow: `0 8px 30px ${activeRole.color}40`,
-                  opacity: loading ? 0.7 : 1,
-                }}>
-                {loading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3" />
-                      <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Authenticating...
-                  </>
-                ) : (
-                  <>
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </motion.button>
-            </form>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-              <span className="text-xs text-slate-600 font-semibold">Quick Demo Access</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-
-            {/* Demo Login Buttons */}
-            <div className="grid grid-cols-3 gap-2">
-              {ROLES.map(r => (
-                <button key={r.id} type="button" onClick={() => demoLogin(r.id)}
-                  className="flex flex-col items-center gap-1 py-3 rounded-2xl text-xs font-bold border transition-all duration-200 cursor-pointer group"
-                  style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)', color: 'rgba(148,163,184,1)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = `${r.color}12`; e.currentTarget.style.borderColor = `${r.color}40`; e.currentTarget.style.color = r.color; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(148,163,184,1)'; }}>
-                  <span className="text-base">{r.emoji}</span>
-                  {r.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Bottom note */}
-            <p className="text-center text-xs text-slate-600 mt-6">
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <button type="button" onClick={() => setMode(m => m === 'login' ? 'register' : 'login')}
-                className="font-bold transition-colors cursor-pointer hover:text-white"
-                style={{ color: activeRole.color }}>
-                {mode === 'login' ? 'Register for free' : 'Sign in instead'}
+          {/* Mode tabs — Login / Sign Up */}
+          <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[{ id: 'login', label: 'LOGIN' }, { id: 'register', label: 'SIGN UP' }].map(m => (
+              <button key={m.id} onClick={() => setMode(m.id)} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 140, padding: '14px 20px', borderRadius: 14, border: 'none',
+                cursor: 'pointer', fontSize: 13, fontWeight: 800, letterSpacing: '0.06em',
+                transition: 'all 0.25s',
+                background: mode === m.id ? 'white' : 'transparent',
+                color: mode === m.id ? '#2563eb' : 'rgba(255,255,255,0.75)',
+                boxShadow: mode === m.id ? '0 8px 24px rgba(0,0,0,0.15)' : 'none',
+              }}>
+                {m.label}
               </button>
-            </p>
+            ))}
           </div>
 
-          {/* Tagline below card */}
-          <p className="text-center text-xs text-slate-700 mt-5 font-medium">
-            Protected by AES-256 · HIPAA Compliant · Zero-Knowledge Auth
+          {/* Bottom tagline */}
+          <div style={{ position: 'absolute', bottom: 32, left: 32, right: 32, zIndex: 2 }}>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 600, lineHeight: 1.6 }}>
+              Secure · HIPAA Compliant<br />256-bit Encryption
+            </p>
+          </div>
+        </div>
+
+        {/* ══ RIGHT PANEL — Clean White Form ══ */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '48px 40px', background: 'white' }}>
+
+          {/* MediVision Logo (right panel) */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
+            <div style={{ width: 56, height: 56, borderRadius: 18, background: 'linear-gradient(135deg, #2563eb, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(37,99,235,0.3)', marginBottom: 10 }}>
+              <Heart style={{ width: 26, height: 26, color: 'white' }} />
+            </div>
+            <h2 style={{ fontSize: 26, fontWeight: 900, color: '#2563eb', letterSpacing: '0.05em', fontFamily: "'Poppins', sans-serif", margin: 0, textTransform: 'uppercase' }}>
+              {mode === 'login' ? 'Login' : 'Register'}
+            </h2>
+          </div>
+
+          {/* Mobile mode toggle */}
+          <div className="flex md:hidden" style={{ gap: 8, marginBottom: 24, justifyContent: 'center' }}>
+            {[{ id: 'login', label: 'Login' }, { id: 'register', label: 'Sign Up' }].map(m => (
+              <button key={m.id} onClick={() => setMode(m.id)} style={{
+                padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
+                borderColor: mode === m.id ? '#2563eb' : '#e2e8f0',
+                background: mode === m.id ? '#2563eb' : 'white',
+                color: mode === m.id ? 'white' : '#64748b',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              }}>{m.label}</button>
+            ))}
+          </div>
+
+          {/* Role Selector */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            {ROLES.map(r => (
+              <button key={r.id} onClick={() => setRole(r.id)} style={{
+                flex: 1, padding: '8px 4px', borderRadius: 10,
+                border: '1.5px solid', borderColor: role === r.id ? '#2563eb' : '#e8edf8',
+                background: role === r.id ? '#eff6ff' : 'white',
+                color: role === r.id ? '#2563eb' : '#94a3b8',
+                fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                transition: 'all 0.2s',
+              }}>
+                <span style={{ fontSize: 16 }}>{r.icon}</span>
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Error / Success messages */}
+          <AnimatePresence>
+            {error && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 14, color: '#dc2626', fontSize: 12, fontWeight: 600 }}>
+                ⚠️ {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+            <AnimatePresence>
+              {mode === 'register' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                  <InputField icon={<User style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Full Name" value={form.name} onChange={setField('name')} type="text" required />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <InputField icon={<Mail style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Email" value={form.email} onChange={setField('email')} type="email" required />
+
+            <AnimatePresence>
+              {mode === 'register' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                  <InputField icon={<Phone style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Phone (optional)" value={form.phone} onChange={setField('phone')} type="tel" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <InputField
+              icon={<Lock style={{ width: 16, height: 16, color: '#94a3b8' }} />}
+              placeholder="Password"
+              value={form.password}
+              onChange={setField('password')}
+              type={showPass ? 'text' : 'password'}
+              required
+              suffix={
+                <button type="button" onClick={() => setShowPass(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, display: 'flex' }}>
+                  {showPass ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
+                </button>
+              }
+            />
+
+            {mode === 'login' && (
+              <div style={{ textAlign: 'right', marginBottom: 20 }}>
+                <button type="button" style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  Forgot Password?
+                </button>
+              </div>
+            )}
+
+            {/* Submit */}
+            <motion.button type="submit" disabled={loading} whileTap={{ scale: 0.98 }}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
+                color: 'white', fontWeight: 800, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 8px 24px rgba(37,99,235,0.3)', marginBottom: 20,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                opacity: loading ? 0.7 : 1,
+                letterSpacing: '0.04em',
+              }}>
+              {loading ? (
+                <>
+                  <svg className="animate-spin" style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3" />
+                    <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
+                </>
+              ) : (
+                <>{mode === 'login' ? 'LOGIN' : 'CREATE ACCOUNT'} <ArrowRight style={{ width: 16, height: 16 }} /></>
+              )}
+            </motion.button>
+          </form>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1, height: 1, background: '#e8edf8' }} />
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>Or Login with</span>
+            <div style={{ flex: 1, height: 1, background: '#e8edf8' }} />
+          </div>
+
+          {/* Social buttons */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
+              <GoogleIcon /> Google
+            </button>
+            <button type="button" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
+              <FacebookIcon /> Facebook
+            </button>
+          </div>
+
+          {/* Mode switch */}
+          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button type="button" onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError(''); }}
+              style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}>
+              {mode === 'login' ? 'Sign Up' : 'Sign In'}
+            </button>
           </p>
-        </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Reusable underline-style input field component
+function InputField({ icon, placeholder, value, onChange, type = 'text', required, suffix }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ position: 'relative', marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: `2px solid ${focused ? '#2563eb' : '#e2e8f0'}`, paddingBottom: 8, transition: 'border-color 0.2s', gap: 10 }}>
+        {icon}
+        <input
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          required={required}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, color: '#1e293b', background: 'transparent', fontFamily: 'inherit', fontWeight: 500 }}
+        />
+        {suffix}
       </div>
     </div>
   );

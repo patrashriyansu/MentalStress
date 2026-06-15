@@ -1,19 +1,48 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+/* ─────────────────────────────────────────────────
+   Auth Store  — with real local user database
+   Users are stored by role; login validates creds
+───────────────────────────────────────────────── */
 export const useAuthStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
+      users: [],   // all registered users
+
       login: (userData) => set({ user: userData, isAuthenticated: true }),
       logout: () => set({ user: null, isAuthenticated: false }),
-      updateUser: (data) => set((state) => ({ user: { ...state.user, ...data } })),
+      updateUser: (data) => set((state) => ({
+        user: { ...state.user, ...data },
+        users: state.users.map(u => u.id === state.user?.id ? { ...u, ...data } : u),
+      })),
+
+      // Register new user — called from AuthPage registration
+      registerUser: (userData) => set((state) => ({
+        users: [...state.users, userData],
+      })),
+
+      // Look up a user by email (case-insensitive)
+      getUserByEmail: (email) => {
+        const users = get().users;
+        return users.find(u => u.email?.toLowerCase() === email?.toLowerCase()) || null;
+      },
+
+      // Get all doctors (users with role === 'doctor')
+      getDoctors: () => get().users.filter(u => u.role === 'doctor'),
+
+      // Get all patients
+      getPatients: () => get().users.filter(u => u.role === 'patient'),
     }),
     { name: 'medivision-auth' }
   )
 );
 
+/* ─────────────────────────────────────────────────
+   Health Store
+───────────────────────────────────────────────── */
 export const useHealthStore = create(
   persist(
     (set) => ({
@@ -51,6 +80,9 @@ export const useHealthStore = create(
   )
 );
 
+/* ─────────────────────────────────────────────────
+   UI Store
+───────────────────────────────────────────────── */
 export const useUIStore = create((set) => ({
   sidebarOpen: true,
   currentLang: 'en',
