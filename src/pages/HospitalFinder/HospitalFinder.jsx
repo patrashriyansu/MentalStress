@@ -139,18 +139,21 @@ export default function HospitalFinder() {
         setLocation(userCoords);
         
         // Reverse geocode
+        let locName = 'Your Location';
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.suburb || data.address?.county || 'Your Area';
           const road = data.address?.road || '';
-          setLocationName(road ? `${road}, ${city}` : city);
+          locName = road ? `${road}, ${city}` : city;
+          setLocationName(locName);
         } catch {
-          setLocationName(`${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`);
+          locName = `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+          setLocationName(locName);
         }
 
         // Fetch real nearby hospitals and pharmacies using Overpass API
-        await fetchLocalHealthStores(latitude, longitude);
+        await fetchLocalHealthStores(latitude, longitude, locName);
         setLocLoading(false);
       },
       (err) => {
@@ -163,7 +166,7 @@ export default function HospitalFinder() {
     );
   };
 
-  const fetchLocalHealthStores = async (lat, lng) => {
+  const fetchLocalHealthStores = async (lat, lng, locName) => {
     try {
       // Find hospitals and pharmacies within 6km radius of user
       const query = `
@@ -252,6 +255,7 @@ export default function HospitalFinder() {
               ...h,
               lat: itemLat,
               lng: itemLng,
+              address: h.address.replace('New Delhi', locName || 'Your Location'),
               distance: parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1))
             };
           });
@@ -276,6 +280,7 @@ export default function HospitalFinder() {
               ...p,
               lat: itemLat,
               lng: itemLng,
+              address: `Main Road, ${locName || 'Your Location'}`,
               distance: parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1))
             };
           });
@@ -287,10 +292,10 @@ export default function HospitalFinder() {
       console.warn('Overpass API fetch error, falling back to centered mock coordinates.', e);
     }
     // Fallback recentered mock data
-    recenterMockData(lat, lng);
+    recenterMockData(lat, lng, locName);
   };
 
-  const recenterMockData = (lat, lng) => {
+  const recenterMockData = (lat, lng, locName) => {
     const offsetHospitals = HOSPITALS.map((h, i) => {
       const offsets = [
         { lat: 0.006, lng: -0.008 },
@@ -306,6 +311,7 @@ export default function HospitalFinder() {
         ...h,
         lat: itemLat,
         lng: itemLng,
+        address: h.address.replace('New Delhi', locName || 'Your Location'),
         distance: parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1))
       };
     });
@@ -324,6 +330,7 @@ export default function HospitalFinder() {
         ...p,
         lat: itemLat,
         lng: itemLng,
+        address: `Main Road, ${locName || 'Your Location'}`,
         distance: parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1))
       };
     });
@@ -335,7 +342,10 @@ export default function HospitalFinder() {
   const loadDefaultMockData = () => {
     // New Delhi mock base
     setHospitalsList(HOSPITALS);
-    setPharmaciesList(PHARMACIES);
+    setPharmaciesList(PHARMACIES.map(p => ({
+      ...p,
+      address: 'Sarita Vihar, New Delhi'
+    })));
   };
 
   // Filter calculations
