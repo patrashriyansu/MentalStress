@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAuthStore, useUIStore } from '../../store';
-import { User, Bell, Shield, Download, Trash2, Moon, Sun, Lock, Heart, Target } from 'lucide-react';
+import { useAuthStore, useUIStore, useNotificationStore } from '../../store';
+import { User, Bell, Shield, Download, Trash2, Moon, Sun, Lock, Heart, Target, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const NOTIF_OPTIONS = [
@@ -21,11 +21,33 @@ const WELLNESS_GOALS = [
 export default function Settings() {
   const { user, updateUser, logout } = useAuthStore();
   const { theme, toggleTheme } = useUIStore();
+  const notifSettings = useNotificationStore();
+
   const [notifications, setNotifications] = useState({ daily_reminder: true, meditation: true, sleep: false, community: true });
   const [goals, setGoals] = useState({ meditate_daily: true, sleep_8h: false, journal_daily: true, stress_below_5: false });
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Email States
+  const [emailEnabled, setEmailEnabled] = useState(notifSettings.emailEnabled);
+  const [customEmailJS, setCustomEmailJS] = useState(notifSettings.customEmailJS);
+  const [recipientEmail, setRecipientEmail] = useState(notifSettings.recipientEmail);
+  const [serviceId, setServiceId] = useState(notifSettings.serviceId);
+  const [templateId, setTemplateId] = useState(notifSettings.templateId);
+  const [publicKey, setPublicKey] = useState(notifSettings.publicKey);
+
+  const saveEmailSettings = () => {
+    notifSettings.updateSettings({
+      emailEnabled,
+      customEmailJS,
+      recipientEmail,
+      serviceId,
+      templateId,
+      publicKey
+    });
+    toast.success('Email settings updated successfully!');
+  };
 
   const toggleNotif = (id) => setNotifications(n => ({ ...n, [id]: !n[id] }));
   const toggleGoal = (id) => setGoals(g => ({ ...g, [id]: !g[id] }));
@@ -138,6 +160,69 @@ export default function Settings() {
               <Toggle checked={notifications[opt.id]} onChange={() => toggleNotif(opt.id)} />
             </div>
           ))}
+        </div>
+      </Section>
+
+      {/* Email Notifications Config */}
+      <Section icon={Mail} title="Email Notifications" iconColor="#3b82f6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontWeight: 600, color: 'var(--text-900)', fontSize: 14 }}>Send Email Alerts</p>
+              <p style={{ fontSize: 12, color: 'var(--text-400)', marginTop: 2 }}>Get emails automatically when logging details (mood, sleep, journals, appointments)</p>
+            </div>
+            <Toggle checked={emailEnabled} onChange={() => setEmailEnabled(!emailEnabled)} />
+          </div>
+
+          {emailEnabled && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-500)', display: 'block', marginBottom: 6 }}>Recipient Email</label>
+                <input className="input-field" placeholder={user?.email || 'your-email@example.com'} value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} />
+                <p style={{ fontSize: 11, color: 'var(--text-400)', marginTop: 4 }}>Leave blank to use your account email address: {user?.email}</p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderTop: '1px solid var(--border-card)' }}>
+                <div>
+                  <p style={{ fontWeight: 600, color: 'var(--text-900)', fontSize: 13 }}>Custom EmailJS Integration</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-400)', marginTop: 2 }}>Connect your own email service to receive actual, live emails</p>
+                </div>
+                <Toggle checked={customEmailJS} onChange={() => setCustomEmailJS(!customEmailJS)} />
+              </div>
+
+              {customEmailJS ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 14, borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border-card)' }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', display: 'block', marginBottom: 4 }}>EmailJS Service ID</label>
+                    <input className="input-field" style={{ padding: '8px 12px', fontSize: 13 }} placeholder="e.g., service_xxxxxx" value={serviceId} onChange={e => setServiceId(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', display: 'block', marginBottom: 4 }}>EmailJS Template ID</label>
+                    <input className="input-field" style={{ padding: '8px 12px', fontSize: 13 }} placeholder="e.g., template_xxxxxx" value={templateId} onChange={e => setTemplateId(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', display: 'block', marginBottom: 4 }}>EmailJS Public Key</label>
+                    <input className="input-field" style={{ padding: '8px 12px', fontSize: 13 }} placeholder="e.g., user_xxxxxx / public_key_xxxxxx" value={publicKey} onChange={e => setPublicKey(e.target.value)} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-500)', lineHeight: 1.5, marginTop: 4 }}>
+                    💡 <strong>Setup Instructions:</strong>
+                    <ol style={{ paddingLeft: 16, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <li>Create a free account at <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{ color: '#6c63ff', textDecoration: 'underline', fontWeight: 600 }}>emailjs.com</a>.</li>
+                      <li>Add an Email Service (e.g. Gmail) and note down your <strong>Service ID</strong>.</li>
+                      <li>Create an Email Template accepting variables: <code>to_name</code>, <code>to_email</code>, <code>action_type</code>, and <code>action_details</code>. Note the <strong>Template ID</strong>.</li>
+                      <li>Go to Account settings to copy your <strong>Public Key</strong>.</li>
+                    </ol>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: 12, borderRadius: 12, background: 'rgba(108,99,255,0.06)', border: '1px dashed rgba(108,99,255,0.25)', fontSize: 12, color: 'var(--purple-755)', color: '#6c63ff', lineHeight: 1.5 }}>
+                  ✨ <strong>Simulated Mode Active:</strong> We will display beautiful custom animated notifications in your browser whenever emails are sent. Toggle "Custom EmailJS Integration" to connect your real inbox!
+                </div>
+              )}
+
+              <button onClick={saveEmailSettings} className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 6 }}>Save Email Configuration</button>
+            </motion.div>
+          )}
         </div>
       </Section>
 

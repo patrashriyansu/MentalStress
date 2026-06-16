@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { sendEmailNotification } from '../services/emailService';
 
 /* ─── Auth Store (Real local user database) ─── */
 export const useAuthStore = create(
@@ -38,6 +39,7 @@ export const useMoodStore = create(
           entries: [newEntry, ...state.entries.filter(e => e.date !== today)],
           todayMood: newEntry,
         }));
+        sendEmailNotification('Mood Logged 🧠', `Mood: ${entry.emoji} ${entry.label} (Score: ${entry.score}/10). Notes: ${entry.notes || 'No notes added.'}`);
       },
 
       deleteEntry: (id) => set((state) => ({
@@ -67,9 +69,11 @@ export const useJournalStore = create(
     (set) => ({
       entries: [], // { id, title, content, mood, tags, date, createdAt }
 
-      addEntry: (entry) => set((state) => ({
-        entries: [{ id: Date.now(), createdAt: new Date().toISOString(), date: new Date().toDateString(), ...entry }, ...state.entries],
-      })),
+      addEntry: (entry) => {
+        const newEntry = { id: Date.now(), createdAt: new Date().toISOString(), date: new Date().toDateString(), ...entry };
+        set((state) => ({ entries: [newEntry, ...state.entries] }));
+        sendEmailNotification('Journal Entry Logged 📖', `Title: "${entry.title}". Mood Tag: ${entry.mood || 'None'}. Excerpt: "${entry.content.substring(0, 80)}${entry.content.length > 80 ? '...' : ''}"`);
+      },
 
       updateEntry: (id, updates) => set((state) => ({
         entries: state.entries.map(e => e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e),
@@ -95,6 +99,7 @@ export const useSleepStore = create(
             ...state.entries.filter(e => e.date !== today),
           ],
         }));
+        sendEmailNotification('Sleep Logged 🌙', `Sleep Duration: ${entry.duration} hours. Quality: ${'⭐'.repeat(entry.quality)} (${entry.quality}/5). Bedtime: ${entry.bedtime}, Wake Time: ${entry.wakeTime}. Notes: ${entry.notes || 'None'}`);
       },
 
       deleteEntry: (id) => set((state) => ({ entries: state.entries.filter(e => e.id !== id) })),
@@ -135,6 +140,7 @@ export const useMeditationStore = create(
           totalMinutes: state.totalMinutes + (session.duration || 0),
           streak: alreadyToday ? state.streak : state.streak + 1,
         }));
+        sendEmailNotification('Meditation Session Completed 🧘', `Session: ${session.type}. Duration: ${session.duration} minutes. Current streak: ${alreadyToday ? get().streak : get().streak + 1} days.`);
       },
 
       getTodayMinutes: () => {
@@ -162,6 +168,8 @@ export const useStressStore = create(
             ...state.entries.filter(e => e.date !== today),
           ],
         }));
+        const stressLevelText = entry.level <= 3 ? 'Low' : entry.level <= 6 ? 'Moderate' : 'High';
+        sendEmailNotification('Stress Level Logged 📊', `Stress Level: ${entry.level}/10 (${stressLevelText}). Triggers: ${(entry.triggers || []).join(', ') || 'None'}. Notes: ${entry.notes || 'None'}`);
       },
 
       getThisWeek: () => {
@@ -225,9 +233,34 @@ export const useHealthStore = create(
       appointments: [],
       addNotification: (n) => set((s) => ({ notifications: [{ id: Date.now(), ...n, read: false }, ...s.notifications] })),
       markAllRead: () => set((s) => ({ notifications: s.notifications.map(n => ({ ...n, read: true })) })),
-      addAppointment: (a) => set((s) => ({ appointments: [...s.appointments, a] })),
-      cancelAppointment: (id) => set((s) => ({ appointments: s.appointments.filter(a => a.id !== id) })),
+      addAppointment: (a) => {
+        set((s) => ({ appointments: [...s.appointments, a] }));
+        sendEmailNotification('Medical Appointment Booked 📅', `Appointment booked with Dr. ${a.doctorName || a.doctor} (${a.specialty}) at ${a.hospitalName || 'Clinic'} for ${a.date} at ${a.time}.`);
+      },
+      cancelAppointment: (id) => {
+        const appt = get().appointments.find(a => a.id === id);
+        set((s) => ({ appointments: s.appointments.filter(a => a.id !== id) }));
+        if (appt) {
+          sendEmailNotification('Medical Appointment Cancelled ❌', `Your appointment with Dr. ${appt.doctorName || appt.doctor} on ${appt.date} at ${appt.time} has been cancelled.`);
+        }
+      },
     }),
     { name: 'mindspace-health' }
+  )
+);
+
+/* ─── Notification Store (EmailJS settings) ─── */
+export const useNotificationStore = create(
+  persist(
+    (set) => ({
+      emailEnabled: true,
+      customEmailJS: false,
+      serviceId: '',
+      templateId: '',
+      publicKey: '',
+      recipientEmail: '',
+      updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
+    }),
+    { name: 'mindspace-notifications' }
   )
 );

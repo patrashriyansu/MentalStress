@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Heart, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../store';
+import toast from 'react-hot-toast';
 
 const ROLES = [
   { id: 'patient', label: 'Patient',  icon: '🧑‍💼' },
@@ -36,8 +37,51 @@ export default function AuthPage() {
   const [success, setSuccess] = useState('');
   const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '' });
 
+  // Social Login Simulator States
+  const [socialModal, setSocialModal] = useState(null); // 'google' | 'facebook' | null
+  const [customSocialName, setCustomSocialName] = useState('');
+  const [customSocialEmail, setCustomSocialEmail] = useState('');
+  const [showCustomSocialInput, setShowCustomSocialInput] = useState(false);
+
   const { login, registerUser, getUserByEmail } = useAuthStore();
   const navigate = useNavigate();
+
+  const handleSocialSelect = (name, email) => {
+    if (!email.trim() || !name.trim()) {
+      toast.error('Please fill in both name and email address');
+      return;
+    }
+    const emailNormalized = email.toLowerCase().trim();
+    const existing = getUserByEmail(emailNormalized);
+
+    if (existing) {
+      login(existing);
+      toast.success(`Welcome back, ${existing.name}! (Logged in via ${socialModal === 'google' ? 'Google' : 'Facebook'})`);
+      setSocialModal(null);
+      setShowCustomSocialInput(false);
+      setCustomSocialName('');
+      setCustomSocialEmail('');
+      navigate(existing.role === 'admin' ? '/admin' : existing.role === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+    } else {
+      const newUser = {
+        id: Date.now(),
+        name: name.trim(),
+        email: emailNormalized,
+        phone: '',
+        password: 'social-auth-generated-pass',
+        role: role, // Use selected role
+        createdAt: new Date().toISOString(),
+      };
+      registerUser(newUser);
+      login(newUser);
+      toast.success(`Successfully registered and logged in as ${name}!`);
+      setSocialModal(null);
+      setShowCustomSocialInput(false);
+      setCustomSocialName('');
+      setCustomSocialEmail('');
+      navigate(role === 'admin' ? '/admin' : role === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+    }
+  };
 
   const setField = k => e => { setForm(f => ({ ...f, [k]: e.target.value })); setError(''); };
 
@@ -287,12 +331,12 @@ export default function AuthPage() {
 
           {/* Social buttons */}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
+            <button type="button" onClick={() => setSocialModal('google')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
               <GoogleIcon /> Google
             </button>
-            <button type="button" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
+            <button type="button" onClick={() => setSocialModal('facebook')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
               <FacebookIcon /> Facebook
@@ -309,6 +353,104 @@ export default function AuthPage() {
           </p>
         </div>
       </div>
+
+      {/* Social Auth Simulator Modal */}
+      <AnimatePresence>
+        {socialModal && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              style={{ width: '100%', maxWidth: 420, background: 'white', borderRadius: 24, padding: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative', border: '1px solid #e2e8f0', fontFamily: 'inherit' }}>
+              
+              {/* Close */}
+              <button onClick={() => { setSocialModal(null); setShowCustomSocialInput(false); }}
+                style={{ position: 'absolute', top: 16, right: 16, border: 'none', background: '#f1f5f9', cursor: 'pointer', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#64748b', fontWeight: 'bold' }}>✕</button>
+
+              {/* Header */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+                {socialModal === 'google' ? (
+                  <>
+                    <div style={{ marginBottom: 12 }}><GoogleIcon /></div>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', fontFamily: "'Poppins', sans-serif", margin: 0 }}>Sign in with Google</h3>
+                    <p style={{ fontSize: 12, color: '#64748b', marginTop: 4, margin: 0 }}>to continue to MindSpace</p>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 12 }}><FacebookIcon /></div>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', fontFamily: "'Poppins', sans-serif", margin: 0 }}>Log in with Facebook</h3>
+                    <p style={{ fontSize: 12, color: '#64748b', marginTop: 4, margin: 0 }}>to continue to MindSpace</p>
+                  </>
+                )}
+              </div>
+
+              {/* Form Content */}
+              {!showCustomSocialInput ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, marginTop: 0 }}>Choose an account</p>
+                  
+                  {/* Account Options */}
+                  <button onClick={() => handleSocialSelect('Rahul Kumar', 'rahulkumar@gmail.com')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#6c63ff'; e.currentTarget.style.background = '#f5f3ff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 14 }}>RK</div>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0 }}>Rahul Kumar</p>
+                      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>rahulkumar@gmail.com</p>
+                    </div>
+                  </button>
+
+                  <button onClick={() => handleSocialSelect('Priya Nair', 'priyanair@gmail.com')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #e2e8f0', background: 'white', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#6c63ff'; e.currentTarget.style.background = '#f5f3ff'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ec4899', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 14 }}>PN</div>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0 }}>Priya Nair</p>
+                      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>priyanair@gmail.com</p>
+                    </div>
+                  </button>
+
+                  {/* Add Account Option */}
+                  <button onClick={() => setShowCustomSocialInput(true)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '12px', borderRadius: 14, border: '1.5px dashed #cbd5e1', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s', fontSize: 12, fontWeight: 700, color: '#64748b' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#475569'; e.currentTarget.style.color = '#334155'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#64748b'; }}>
+                    ➕ Use another account
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <button onClick={() => setShowCustomSocialInput(false)}
+                    style={{ border: 'none', background: 'none', color: '#6c63ff', cursor: 'pointer', fontSize: 12, fontWeight: 700, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}>
+                    ← Back to accounts list
+                  </button>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>Full Name</label>
+                    <input className="input-field" placeholder="Enter your name" style={{ borderBottom: '2px solid #e2e8f0', width: '100%' }} value={customSocialName} onChange={e => setCustomSocialName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>Email Address</label>
+                    <input className="input-field" type="email" placeholder="Enter your email" style={{ borderBottom: '2px solid #e2e8f0', width: '100%' }} value={customSocialEmail} onChange={e => setCustomSocialEmail(e.target.value)} />
+                  </div>
+                  <button onClick={() => handleSocialSelect(customSocialName, customSocialEmail)}
+                    style={{ width: '100%', padding: 12, borderRadius: 12, border: 'none', background: socialModal === 'google' ? '#4285F4' : '#1877F2', color: 'white', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'opacity 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = 0.9}
+                    onMouseLeave={e => e.currentTarget.style.opacity = 1}>
+                    Continue Sign-In
+                  </button>
+                </div>
+              )}
+
+              {/* Secure Footer */}
+              <div style={{ marginTop: 24, textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
+                <p style={{ fontSize: 10, color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, margin: 0 }}>
+                  🔒 Simulated secure authorization
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
