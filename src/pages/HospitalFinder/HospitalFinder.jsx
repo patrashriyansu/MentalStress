@@ -126,14 +126,35 @@ export default function HospitalFinder() {
 
   const fetchLocalHealthStores = async (lat, lng, locName) => {
     try {
-      // Find hospitals and pharmacies within 6km radius of user
+      // Find hospitals, clinics, doctor practices, and pharmacies/chemists within 20km radius of user
       const query = `
-        [out:json][timeout:10];
+        [out:json][timeout:15];
         (
-          node["amenity"="hospital"](around:6000, ${lat}, ${lng});
-          node["amenity"="pharmacy"](around:6000, ${lat}, ${lng});
-          way["amenity"="hospital"](around:6000, ${lat}, ${lng});
-          way["amenity"="pharmacy"](around:6000, ${lat}, ${lng});
+          node["amenity"="hospital"](around:20000, ${lat}, ${lng});
+          node["amenity"="clinic"](around:20000, ${lat}, ${lng});
+          node["amenity"="doctors"](around:20000, ${lat}, ${lng});
+          node["healthcare"="hospital"](around:20000, ${lat}, ${lng});
+          node["healthcare"="clinic"](around:20000, ${lat}, ${lng});
+          node["healthcare"="centre"](around:20000, ${lat}, ${lng});
+          node["healthcare"="doctors"](around:20000, ${lat}, ${lng});
+          node["amenity"="pharmacy"](around:20000, ${lat}, ${lng});
+          node["healthcare"="pharmacy"](around:20000, ${lat}, ${lng});
+          node["shop"="chemist"](around:20000, ${lat}, ${lng});
+          node["shop"="medical"](around:20000, ${lat}, ${lng});
+          node["shop"="pharmacy"](around:20000, ${lat}, ${lng});
+
+          way["amenity"="hospital"](around:20000, ${lat}, ${lng});
+          way["amenity"="clinic"](around:20000, ${lat}, ${lng});
+          way["amenity"="doctors"](around:20000, ${lat}, ${lng});
+          way["healthcare"="hospital"](around:20000, ${lat}, ${lng});
+          way["healthcare"="clinic"](around:20000, ${lat}, ${lng});
+          way["healthcare"="centre"](around:20000, ${lat}, ${lng});
+          way["healthcare"="doctors"](around:20000, ${lat}, ${lng});
+          way["amenity"="pharmacy"](around:20000, ${lat}, ${lng});
+          way["healthcare"="pharmacy"](around:20000, ${lat}, ${lng});
+          way["shop"="chemist"](around:20000, ${lat}, ${lng});
+          way["shop"="medical"](around:20000, ${lat}, ${lng});
+          way["shop"="pharmacy"](around:20000, ${lat}, ${lng});
         );
         out center;
       `;
@@ -158,10 +179,37 @@ export default function HospitalFinder() {
           if (!itemLat || !itemLng) return;
 
           const distance = parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1));
-          const baseName = el.tags.name || (el.tags.amenity === 'hospital' ? 'Community Hospital' : 'Local Medical Store');
+          
+          const isHospital = el.tags.amenity === 'hospital' || 
+                             el.tags.amenity === 'clinic' || 
+                             el.tags.amenity === 'doctors' || 
+                             el.tags.healthcare === 'hospital' ||
+                             el.tags.healthcare === 'clinic' ||
+                             el.tags.healthcare === 'centre' ||
+                             el.tags.healthcare === 'doctors';
+
+          const isPharmacy = el.tags.amenity === 'pharmacy' ||
+                             el.tags.healthcare === 'pharmacy' ||
+                             el.tags.shop === 'chemist' ||
+                             el.tags.shop === 'medical' ||
+                             el.tags.shop === 'pharmacy';
+
+          let defaultName = 'Medical Store';
+          if (isHospital) {
+            if (el.tags.amenity === 'hospital' || el.tags.healthcare === 'hospital') {
+              defaultName = 'Community Hospital';
+            } else if (el.tags.amenity === 'clinic' || el.tags.healthcare === 'clinic') {
+              defaultName = 'Health Clinic';
+            } else if (el.tags.amenity === 'doctors' || el.tags.healthcare === 'doctors') {
+              defaultName = 'Doctor\'s Clinic';
+            } else {
+              defaultName = 'Healthcare Centre';
+            }
+          }
+          const baseName = el.tags.name || defaultName;
           const address = el.tags['addr:street'] || el.tags['addr:suburb'] || el.tags['addr:neighbourhood'] || 'Nearby Location';
 
-          if (el.tags.amenity === 'hospital') {
+          if (isHospital) {
             osmHospitals.push({
               id: `osm-h-${el.id || index}`,
               name: baseName,
@@ -171,16 +219,16 @@ export default function HospitalFinder() {
               distance,
               rating: (4.1 + Math.random() * 0.8).toFixed(1),
               emergency: el.tags.emergency === 'yes' || Math.random() > 0.3,
-              icu: Math.random() > 0.4,
-              ambulance: Math.random() > 0.3,
+              icu: el.tags.icu === 'yes' || Math.random() > 0.5,
+              ambulance: el.tags.ambulance === 'yes' || Math.random() > 0.4,
               specialties: ['General Medicine', 'Emergency Care', 'Pediatrics'],
               open: true,
               beds: Math.floor(15 + Math.random() * 85)
             });
-          } else if (el.tags.amenity === 'pharmacy') {
+          } else if (isPharmacy) {
             osmPharmacies.push({
               id: `osm-p-${el.id || index}`,
-              name: baseName.includes('Pharmacy') || baseName.includes('Medical') ? baseName : `${baseName} Pharmacy`,
+              name: baseName.includes('Pharmacy') || baseName.includes('Medical') || baseName.includes('Chemist') ? baseName : `${baseName} Pharmacy`,
               address,
               lat: itemLat,
               lng: itemLng,
@@ -197,7 +245,7 @@ export default function HospitalFinder() {
         if (osmHospitals.length > 0) {
           setHospitalsList(osmHospitals.sort((a,b) => a.distance - b.distance));
         } else {
-          // Recenter only mock hospitals
+          // Recenter only mock hospitals with localized names
           const offsetHospitals = HOSPITALS.map((h, i) => {
             const offsets = [
               { lat: 0.006, lng: -0.008 },
@@ -209,11 +257,19 @@ export default function HospitalFinder() {
             const off = offsets[i % offsets.length];
             const itemLat = lat + off.lat;
             const itemLng = lng + off.lng;
+            const fallbackNames = [
+              `Community Health Centre, ${locName}`,
+              `Primary Health Centre, ${locName}`,
+              `Rural Hospital, ${locName}`,
+              `General Clinic, ${locName}`,
+              `Emergency Care Clinic, ${locName}`
+            ];
             return {
               ...h,
+              name: fallbackNames[i % fallbackNames.length],
               lat: itemLat,
               lng: itemLng,
-              address: h.address.replace('New Delhi', locName || 'Your Location'),
+              address: `Main Road, ${locName || 'Your Location'}`,
               distance: parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1))
             };
           });
@@ -223,7 +279,7 @@ export default function HospitalFinder() {
         if (osmPharmacies.length > 0) {
           setPharmaciesList(osmPharmacies.sort((a,b) => a.distance - b.distance));
         } else {
-          // Recenter only mock pharmacies
+          // Recenter only mock pharmacies with localized names
           const offsetPharmacies = PHARMACIES.map((p, i) => {
             const offsets = [
               { lat: 0.003, lng: -0.005 },
@@ -234,8 +290,15 @@ export default function HospitalFinder() {
             const off = offsets[i % offsets.length];
             const itemLat = lat + off.lat;
             const itemLng = lng + off.lng;
+            const fallbackNames = [
+              `Local Medical Store, ${locName}`,
+              `Popular Pharmacy, ${locName}`,
+              `Jan Aushadhi Kendra, ${locName}`,
+              `City Medical & General Store, ${locName}`
+            ];
             return {
               ...p,
+              name: fallbackNames[i % fallbackNames.length],
               lat: itemLat,
               lng: itemLng,
               address: `Main Road, ${locName || 'Your Location'}`,
@@ -265,11 +328,19 @@ export default function HospitalFinder() {
       const off = offsets[i % offsets.length];
       const itemLat = lat + off.lat;
       const itemLng = lng + off.lng;
+      const fallbackNames = [
+        `Community Health Centre, ${locName || 'Your Area'}`,
+        `Primary Health Centre, ${locName || 'Your Area'}`,
+        `Rural Hospital, ${locName || 'Your Area'}`,
+        `General Clinic, ${locName || 'Your Area'}`,
+        `Emergency Care Clinic, ${locName || 'Your Area'}`
+      ];
       return {
         ...h,
+        name: fallbackNames[i % fallbackNames.length],
         lat: itemLat,
         lng: itemLng,
-        address: h.address.replace('New Delhi', locName || 'Your Location'),
+        address: `Main Road, ${locName || 'Your Location'}`,
         distance: parseFloat(getDistance(lat, lng, itemLat, itemLng).toFixed(1))
       };
     });
@@ -284,8 +355,15 @@ export default function HospitalFinder() {
       const off = offsets[i % offsets.length];
       const itemLat = lat + off.lat;
       const itemLng = lng + off.lng;
+      const fallbackNames = [
+        `Local Medical Store, ${locName || 'Your Area'}`,
+        `Popular Pharmacy, ${locName || 'Your Area'}`,
+        `Jan Aushadhi Kendra, ${locName || 'Your Area'}`,
+        `City Medical & General Store, ${locName || 'Your Area'}`
+      ];
       return {
         ...p,
+        name: fallbackNames[i % fallbackNames.length],
         lat: itemLat,
         lng: itemLng,
         address: `Main Road, ${locName || 'Your Location'}`,
@@ -351,8 +429,16 @@ export default function HospitalFinder() {
 
       mapInstanceRef.current = map;
       markersGroupRef.current = L.layerGroup().addTo(map);
+
+      // Invalidate size after mount/render to avoid gray grid glitches
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 300);
     } else {
       mapInstanceRef.current.setView([location.lat, location.lng], 14);
+      setTimeout(() => {
+        mapInstanceRef.current.invalidateSize();
+      }, 150);
     }
   }, [mapLoaded, location]);
 
