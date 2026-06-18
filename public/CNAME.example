@@ -1,0 +1,17 @@
+# CNAME CONFIGURATION EXAMPLE
+#
+# If you purchase a professional custom domain (e.g. www.yourdomain.com or app.yourdomain.com),
+# rename this file from CNAME.example to CNAME (removing the .example extension) and write your
+# domain name on the first line:
+#
+# mindspace-health.com
+#
+# Note:
+# Once a CNAME is deployed, GitHub Pages will serve the app at the root folder of your domain.
+# Therefore, you should update vite.config.js to change the base path from '/MentalStress/' to '/':
+#
+# vite.config.js:
+# export default defineConfig({
+#   plugins: [react()],
+#   base: '/',  <-- Change from '/MentalStress/' to '/'
+# })

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HOSPITALS, PHARMACIES } from '../../data/mockData';
+import { HOSPITALS, PHARMACIES, DOCTORS } from '../../data/mockData';
+import { useAuthStore } from '../../store';
+import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Phone, Star, Navigation, Ambulance, Shield, Clock, Loader, Activity } from 'lucide-react';
 
 // Distance calculation using Haversine formula
@@ -18,86 +20,10 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-function SVGMap({ items, selected, onSelect, locationName, userLocation, activeTab }) {
-  // projection scale: roughly covers a 5-6km bounding box
-  const maxDiff = 0.05; 
-
-  return (
-    <div style={{ position: 'relative', width: '100%', height: 280, overflow: 'hidden', borderRadius: 16, background: 'linear-gradient(135deg, #e8f5e9, #e3f2fd, #f3e5f5)' }}>
-      {/* Grid Lines */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.1 }}>
-        {[...Array(10)].map((_, i) => (
-          <React.Fragment key={i}>
-            <line x1="0" y1={`${i * 11.1}%`} x2="100%" y2={`${i * 11.1}%`} stroke="#6c63ff" strokeWidth="1" />
-            <line x1={`${i * 11.1}%`} y1="0" x2={`${i * 11.1}%`} y2="100%" stroke="#6c63ff" strokeWidth="1" />
-          </React.Fragment>
-        ))}
-      </svg>
-      
-      {/* projected coordinates / pins */}
-      {items.slice(0, 10).map((h, i) => {
-        let x = 50;
-        let y = 50;
-        if (userLocation && h.lat && h.lng) {
-          const latDiff = h.lat - userLocation.lat;
-          const lngDiff = h.lng - userLocation.lng;
-          // map to percentage coordinate
-          x = Math.max(8, Math.min(92, 50 + (lngDiff / maxDiff) * 40));
-          y = Math.max(8, Math.min(92, 50 - (latDiff / maxDiff) * 40)); // Y goes down on screen
-        } else {
-          // Mock standard mapping offsets
-          const mockOffsets = [
-            { x: 30, y: 40 }, { x: 55, y: 30 }, { x: 72, y: 60 },
-            { x: 38, y: 68 }, { x: 64, y: 22 }, { x: 25, y: 78 }
-          ];
-          const off = mockOffsets[i % mockOffsets.length];
-          x = off.x;
-          y = off.y;
-        }
-
-        const isSelected = selected === h.id;
-        const markerColor = activeTab === 'hospitals'
-          ? (isSelected ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : '#ef4444')
-          : (isSelected ? 'linear-gradient(135deg, #10b981, #047857)' : '#8b5cf6');
-        const emoji = activeTab === 'hospitals' ? '🏥' : '💊';
-
-        return (
-          <motion.div key={h.id} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-100%)', zIndex: 10, cursor: 'pointer' }}
-            whileHover={{ scale: 1.25 }} initial={{ scale: 0, y: -10 }} animate={{ scale: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            onClick={() => onSelect(h.id === selected ? null : h.id)}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: 38, height: 38, borderRadius: '50%', border: `3px solid ${isSelected ? '#6c63ff' : 'white'}`, background: markerColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.18)' }}>
-                {emoji}
-              </div>
-              <div style={{ width: 6, height: 6, marginTop: 1, borderRadius: '50%', background: isSelected ? '#6c63ff' : (activeTab === 'hospitals' ? '#ef4444' : '#8b5cf6') }} />
-              {isSelected && (
-                <div style={{ position: 'absolute', top: -32, left: '50%', transform: 'translateX(-50%)', background: 'white', borderRadius: 8, padding: '4px 10px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 700, color: '#6c63ff', whiteSpace: 'nowrap', zIndex: 30 }}>
-                  {h.name}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        );
-      })}
-
-      {/* User Center Coordinate */}
-      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', zIndex: 20 }}>
-        <div style={{ position: 'relative', width: 26, height: 26 }}>
-          <div style={{ position: 'absolute', inset: -4, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.25)', animation: 'ping 2s infinite' }} />
-          <div style={{ width: 26, height: 26, borderRadius: '50%', border: '3px solid white', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, boxShadow: '0 2px 10px rgba(29, 78, 216, 0.45)' }}>📍</div>
-        </div>
-      </div>
-
-      {/* Location label */}
-      <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(10px)', borderRadius: 10, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-        <MapPin style={{ width: 12, height: 12, color: '#6c63ff' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>{locationName || 'Locating...'}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function HospitalFinder() {
+  const { getDoctors } = useAuthStore();
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState('hospitals'); // 'hospitals' | 'pharmacies'
   const [search, setSearch]     = useState('');
   const [filter, setFilter]     = useState('All');
@@ -112,11 +38,43 @@ export default function HospitalFinder() {
   const [hospitalsList, setHospitalsList]   = useState(HOSPITALS);
   const [pharmaciesList, setPharmaciesList] = useState(PHARMACIES);
 
+  // Map States
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const mapInstanceRef = useRef(null);
+  const markersGroupRef = useRef(null);
+
+  // Load Leaflet dynamically
+  useEffect(() => {
+    if (window.L) {
+      setMapLoaded(true);
+      return;
+    }
+
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(cssLink);
+
+    const jsScript = document.createElement('script');
+    jsScript.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    jsScript.onload = () => {
+      setMapLoaded(true);
+    };
+    document.head.appendChild(jsScript);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     getLocation();
   }, []);
 
-  // When tab switches, reset selected items and filters
+  // Reset selection on tab switch
   useEffect(() => {
     setSelected(null);
     setFilter('All');
@@ -373,6 +331,125 @@ export default function HospitalFinder() {
     ? ['All', '24x7 Emergency', 'ICU Available', 'Ambulance']
     : ['All', 'Open 24/7', 'Home Delivery', 'High Stock (>80%)'];
 
+  // Initialize and Render Leaflet Map
+  useEffect(() => {
+    if (!mapLoaded || !location) return;
+
+    const mapContainer = document.getElementById('leaflet-map');
+    if (!mapContainer) return;
+
+    if (!mapInstanceRef.current) {
+      const L = window.L;
+      const map = L.map('leaflet-map', {
+        zoomControl: true,
+        scrollWheelZoom: true
+      }).setView([location.lat, location.lng], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      mapInstanceRef.current = map;
+      markersGroupRef.current = L.layerGroup().addTo(map);
+    } else {
+      mapInstanceRef.current.setView([location.lat, location.lng], 14);
+    }
+  }, [mapLoaded, location]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !markersGroupRef.current || !location) return;
+
+    const L = window.L;
+    markersGroupRef.current.clearLayers();
+
+    // 1. User Location Pin
+    const userIcon = L.divIcon({
+      className: 'user-marker',
+      html: `<div style="font-size: 26px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); cursor: pointer;">📍</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30]
+    });
+    L.marker([location.lat, location.lng], { icon: userIcon })
+      .bindPopup('<b>Your Current Location</b>')
+      .addTo(markersGroupRef.current);
+
+    // 2. Items Markers
+    currentItems.forEach(item => {
+      const isSel = selected === item.id;
+      const emoji = activeTab === 'hospitals' ? '🏥' : '💊';
+      const markerColor = activeTab === 'hospitals'
+        ? (isSel ? '#b91c1c' : '#ef4444')
+        : (isSel ? '#047857' : '#10b981');
+      
+      const customIcon = L.divIcon({
+        className: 'location-marker',
+        html: `
+          <div style="
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid ${isSel ? '#6c63ff' : 'white'};
+            background: ${markerColor};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+            transition: all 0.2s;
+            transform-origin: bottom center;
+            ${isSel ? 'transform: scale(1.15) translateY(-5px);' : ''}
+          ">
+            ${emoji}
+          </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 36]
+      });
+
+      const marker = L.marker([item.lat, item.lng], { icon: customIcon })
+        .bindPopup(`
+          <div style="font-family: 'Inter', sans-serif; padding: 4px; min-width: 140px;">
+            <b style="font-size: 13px; color: #111827; display: block; margin-bottom: 2px;">${item.name}</b>
+            <span style="font-size: 11px; color: #6b7280; display: block; margin-bottom: 4px;">${item.address}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #6c63ff;">${item.distance} km away</span>
+          </div>
+        `)
+        .addTo(markersGroupRef.current);
+
+      marker.on('click', () => {
+        setSelected(item.id);
+      });
+
+      if (isSel) {
+        marker.openPopup();
+        mapInstanceRef.current.panTo([item.lat, item.lng]);
+      }
+    });
+  }, [currentItems, selected, activeTab, location, mapLoaded]);
+
+  // Retrieve specialists available at selected hospital
+  const getDoctorsForHospital = (hospitalName) => {
+    // 1. Registered doctors with role 'doctor'
+    const registeredDocs = getDoctors().filter(
+      d => d.hospital && d.hospital.toLowerCase().includes(hospitalName.toLowerCase())
+    );
+    if (registeredDocs.length > 0) return registeredDocs;
+
+    // 2. Mock fallback specialists matching the hospital
+    const mockDocs = DOCTORS.filter(
+      d => d.hospital && d.hospital.toLowerCase().includes(hospitalName.toLowerCase())
+    );
+    return mockDocs.map((d, index) => ({
+      id: `mock-h-doc-${index}`,
+      name: d.name,
+      specialty: d.specialty,
+      hospital: d.hospital,
+      experience: d.experience || 8,
+      fee: d.fee || 500,
+      rating: d.rating || 4.7
+    }));
+  };
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -396,7 +473,6 @@ export default function HospitalFinder() {
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             style={{
               padding: '10px 20px',
-              borderRadius: 12,
               border: 'none',
               cursor: 'pointer',
               fontSize: 13,
@@ -446,9 +522,8 @@ export default function HospitalFinder() {
       {/* Main Grid: List + Map */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 20 }} className="grid-cols-1 md:grid-cols-2">
         {/* List Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 580, overflowY: 'auto', paddingRight: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 600, overflowY: 'auto', paddingRight: 4 }}>
           {activeTab === 'hospitals' ? (
-            // Hospital cards
             filteredHospitals.map((h, i) => (
               <motion.div key={h.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 className="card card-lift" onClick={() => setSelected(h.id === selected ? null : h.id)}
@@ -474,7 +549,6 @@ export default function HospitalFinder() {
               </motion.div>
             ))
           ) : (
-            // Pharmacy cards
             filteredPharmacies.map((p, i) => (
               <motion.div key={p.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 className="card card-lift" onClick={() => setSelected(p.id === selected ? null : p.id)}
@@ -511,7 +585,15 @@ export default function HospitalFinder() {
 
         {/* Map + Detail Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <SVGMap items={currentItems} selected={selected} onSelect={setSelected} locationName={locationName} userLocation={location} activeTab={activeTab} />
+          {/* Leaflet Map container */}
+          <div style={{ position: 'relative', width: '100%', height: 280, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border-card)' }}>
+            {!mapLoaded && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-1)', zIndex: 10 }}>
+                <Loader style={{ width: 24, height: 24, color: '#6c63ff', animation: 'spin 1.5s linear infinite' }} />
+              </div>
+            )}
+            <div id="leaflet-map" style={{ width: '100%', height: '100%', zIndex: 1 }} />
+          </div>
 
           {selectedItem && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ padding: 20 }}>
@@ -543,6 +625,31 @@ export default function HospitalFinder() {
                   ))
                 )}
               </div>
+
+              {/* Doctors association section */}
+              {activeTab === 'hospitals' && (
+                <div style={{ marginBottom: 14, borderTop: '1px solid var(--border-card)', paddingTop: 14 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-500)', textTransform: 'uppercase', marginBottom: 8 }}>👨‍⚕️ Available Doctors</p>
+                  {getDoctorsForHospital(selectedItem.name).length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--text-400)', fontStyle: 'italic', margin: 0 }}>No registered doctors at this facility yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {getDoctorsForHospital(selectedItem.name).slice(0, 3).map(doc => (
+                        <div key={doc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-card)' }}>
+                          <div>
+                            <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-900)', margin: 0 }}>{doc.name}</p>
+                            <p style={{ fontSize: 11, color: '#6c63ff', fontWeight: 600, margin: 0 }}>{doc.specialty} • ₹{doc.fee}</p>
+                          </div>
+                          <button onClick={() => navigate('/appointments', { state: { doctor: doc } })}
+                            className="btn btn-primary" style={{ padding: '6px 10px', fontSize: 11, borderRadius: 8 }}>
+                            Book Slot
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Specialties / Medicines Stock details */}
               {activeTab === 'hospitals' ? (
