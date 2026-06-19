@@ -35,7 +35,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
-  const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '' });
+  const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '', specialty: 'General Physician', hospital: 'MediVision Clinic', experience: '5', fee: '500' });
 
   // Social Login Simulator States
   const [socialModal, setSocialModal] = useState(null); // 'google' | 'facebook' | null
@@ -71,6 +71,14 @@ export default function AuthPage() {
         password: 'social-auth-generated-pass',
         role: role, // Use selected role
         createdAt: new Date().toISOString(),
+        ...(role === 'doctor' ? {
+          specialty: 'General Physician',
+          hospital: 'MediVision Clinic',
+          experience: 5,
+          fee: 500,
+          nextAvailable: 'Today 3:00 PM',
+          rating: 4.8
+        } : {})
       };
       registerUser(newUser);
       login(newUser);
@@ -110,6 +118,14 @@ export default function AuthPage() {
         password: form.password,
         role,
         createdAt: new Date().toISOString(),
+        ...(role === 'doctor' ? {
+          specialty: form.specialty || 'General Physician',
+          hospital: form.hospital || 'MediVision Clinic',
+          experience: parseInt(form.experience) || 5,
+          fee: parseInt(form.fee) || 500,
+          nextAvailable: 'Today 3:00 PM',
+          rating: 4.8
+        } : {})
       };
       registerUser(newUser);
       login(newUser);
@@ -271,6 +287,39 @@ export default function AuthPage() {
               {mode === 'register' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
                   <InputField icon={<Phone style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Phone (optional)" value={form.phone} onChange={setField('phone')} type="tel" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {mode === 'register' && role === 'doctor' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Specialty</label>
+                    <select className="input-field" value={form.specialty} onChange={setField('specialty')} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }}>
+                      <option value="General Physician">General Physician</option>
+                      <option value="Cardiologist">Cardiologist</option>
+                      <option value="Neurologist">Neurologist</option>
+                      <option value="Dermatologist">Dermatologist</option>
+                      <option value="Orthopedic">Orthopedic</option>
+                      <option value="Diabetologist">Diabetologist</option>
+                      <option value="Psychiatrist">Psychiatrist</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Hospital / Clinic</label>
+                    <input className="input-field" placeholder="Hospital/Clinic Name" value={form.hospital} onChange={setField('hospital')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Experience (Years)</label>
+                      <input className="input-field" type="number" min="0" value={form.experience} onChange={setField('experience')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Consultation Fee (₹)</label>
+                      <input className="input-field" type="number" min="0" value={form.fee} onChange={setField('fee')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

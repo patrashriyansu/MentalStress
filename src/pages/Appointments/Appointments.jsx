@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DOCTORS } from '../../data/mockData';
 import { Calendar, Clock, ChevronLeft, ChevronRight, Check, Video, MapPin, CreditCard, Shield, Plus, AlertCircle, Phone, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useHealthStore } from '../../store';
+import { useHealthStore, useAuthStore } from '../../store';
 import toast from 'react-hot-toast';
 
 const TIMES = ['09:00 AM','10:00 AM','11:00 AM','12:00 PM','02:00 PM','03:00 PM','04:00 PM','05:00 PM','06:00 PM'];
@@ -73,6 +72,21 @@ export default function Appointments() {
   const location = useLocation();
   const navigate = useNavigate();
   const { appointments, addAppointment, cancelAppointment, addNotification } = useHealthStore();
+  const { getDoctors } = useAuthStore();
+  const registeredDoctors = getDoctors().map((d, i) => ({
+    id: d.id,
+    name: d.name,
+    specialty: d.specialty || 'General Physician',
+    hospital: d.hospital || 'MediVision Clinic',
+    rating: d.rating || 4.7,
+    experience: d.experience || 5,
+    fee: d.fee || 500,
+    available: true,
+    image: null,
+    nextAvailable: d.nextAvailable || 'Today 3:00 PM',
+    email: d.email,
+    phone: d.phone,
+  }));
 
   useEffect(() => {
     if (location.state?.doctor) {
@@ -236,32 +250,42 @@ export default function Appointments() {
 
           {/* Step 1: Doctor Selection */}
           {step===1 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {DOCTORS.map((d,i) => (
-                <motion.div key={d.id} initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.06 }}
-                  onClick={() => { setSelDoc(d); setStep(2); }}
-                  className={`card p-4 cursor-pointer transition-all ${selDoc?.id===d.id ? 'ring-2 ring-purple-500' : ''}`}
-                  style={{ borderRadius:16 }}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background:'#f5f3ff' }}>
-                      {i%2===0?'👩‍⚕️':'👨‍⚕️'}
+            registeredDoctors.length === 0 ? (
+              <div className="card text-center col-span-full" style={{ padding: '64px 24px', borderRadius: 20 }}>
+                <div style={{ fontSize: 56, marginBottom: 16 }}>👨‍⚕️</div>
+                <h3 className="text-base font-bold text-slate-800" style={{ fontFamily: "'Poppins', sans-serif" }}>No Registered Specialists Available</h3>
+                <p className="text-slate-400 text-xs max-w-sm mx-auto mt-2">
+                  There are currently no medical specialists registered in the directory. Doctors can create an account using the Sign Up portal.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {registeredDoctors.map((d,i) => (
+                  <motion.div key={d.id} initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.06 }}
+                    onClick={() => { setSelDoc(d); setStep(2); }}
+                    className={`card p-4 cursor-pointer transition-all ${selDoc?.id===d.id ? 'ring-2 ring-purple-500' : ''}`}
+                    style={{ borderRadius:16 }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background:'#f5f3ff' }}>
+                        {i%2===0?'👩‍⚕️':'👨‍⚕️'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800 truncate">{d.name}</p>
+                        <p className="text-xs font-semibold text-purple-600">{d.specialty}</p>
+                        <p className="text-xs truncate" style={{ color:'#94a3b8' }}>{d.hospital}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-800 truncate">{d.name}</p>
-                      <p className="text-xs font-semibold text-purple-600">{d.specialty}</p>
-                      <p className="text-xs truncate" style={{ color:'#94a3b8' }}>{d.hospital}</p>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1">
+                        ⭐ <span className="font-bold text-slate-700">{d.rating || '4.7'}</span>
+                        <span style={{ color:'#94a3b8' }}>• {d.experience || '8'}y exp</span>
+                      </div>
+                      <span className="font-bold text-purple-600">₹{d.fee}</span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1">
-                      ⭐ <span className="font-bold text-slate-700">{d.rating || '4.7'}</span>
-                      <span style={{ color:'#94a3b8' }}>• {d.experience || '8'}y exp</span>
-                    </div>
-                    <span className="font-bold text-purple-600">₹{d.fee}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                  </motion.div>
+                ))}
+              </div>
+            )
           )}
 
           {/* Step 2: Date & Time */}
@@ -273,7 +297,7 @@ export default function Appointments() {
                   <p className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color:'#94a3b8' }}>Consulting</p>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style={{ background:'#f5f3ff' }}>
-                      {DOCTORS.indexOf(selDoc)%2===0?'👩‍⚕️':'👨‍⚕️'}
+                      {registeredDoctors.indexOf(selDoc)%2===0?'👩‍⚕️':'👨‍⚕️'}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800">{selDoc.name}</p>

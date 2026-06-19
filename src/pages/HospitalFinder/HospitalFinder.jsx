@@ -515,25 +515,10 @@ export default function HospitalFinder() {
 
   // Retrieve specialists available at selected hospital
   const getDoctorsForHospital = (hospitalName) => {
-    // 1. Registered doctors with role 'doctor'
-    const registeredDocs = getDoctors().filter(
+    // Registered doctors with role 'doctor'
+    return getDoctors().filter(
       d => d.hospital && d.hospital.toLowerCase().includes(hospitalName.toLowerCase())
     );
-    if (registeredDocs.length > 0) return registeredDocs;
-
-    // 2. Mock fallback specialists matching the hospital
-    const mockDocs = DOCTORS.filter(
-      d => d.hospital && d.hospital.toLowerCase().includes(hospitalName.toLowerCase())
-    );
-    return mockDocs.map((d, index) => ({
-      id: `mock-h-doc-${index}`,
-      name: d.name,
-      specialty: d.specialty,
-      hospital: d.hospital,
-      experience: d.experience || 8,
-      fee: d.fee || 500,
-      rating: d.rating || 4.7
-    }));
   };
 
   return (

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { sendEmailNotification } from '../services/emailService';
+import toast from 'react-hot-toast';
 
 /* ─── Auth Store (Real local user database) ─── */
 export const useAuthStore = create(
@@ -228,7 +229,7 @@ export const useUIStore = create((set) => ({
 /* ─── Health Store (legacy compatibility) ─── */
 export const useHealthStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       notifications: [],
       appointments: [],
       addNotification: (n) => set((s) => ({ notifications: [{ id: Date.now(), ...n, read: false }, ...s.notifications] })),
@@ -236,6 +237,39 @@ export const useHealthStore = create(
       addAppointment: (a) => {
         set((s) => ({ appointments: [...s.appointments, a] }));
         sendEmailNotification('Medical Appointment Booked 📅', `Appointment booked with Dr. ${a.doctorName || a.doctor} (${a.specialty}) at ${a.hospitalName || 'Clinic'} for ${a.date} at ${a.time}.`);
+        
+        // Retrieve logged in user's phone for SMS
+        let targetPhone = '+91 98765 43210';
+        try {
+          const authStoreStr = localStorage.getItem('mindspace-auth');
+          if (authStoreStr) {
+            const parsed = JSON.parse(authStoreStr);
+            if (parsed?.state?.user?.phone) {
+              targetPhone = parsed.state.user.phone;
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        // SMS Simulation Toast
+        setTimeout(() => {
+          toast.success(
+            `💬 SMS Sent to ${targetPhone}!\nMessage: "Your appointment with Dr. ${a.doctorName || a.doctor} is confirmed for ${a.date} at ${a.time}."`,
+            {
+              duration: 6000,
+              icon: '💬',
+              style: {
+                border: '1.5px dashed #0ea5e9',
+                background: '#f0f9ff',
+                color: '#0369a1',
+                padding: '12px 16px',
+                fontSize: '12.5px',
+                fontWeight: 600
+              },
+            }
+          );
+        }, 1000);
       },
       cancelAppointment: (id) => {
         const appt = get().appointments.find(a => a.id === id);
