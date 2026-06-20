@@ -255,16 +255,17 @@ export const useHealthStore = create(
         // SMS Simulation Toast
         setTimeout(() => {
           toast.success(
-            `💬 SMS Sent to ${targetPhone}!\nMessage: "Your appointment with Dr. ${a.doctorName || a.doctor} is confirmed for ${a.date} at ${a.time}."`,
+            `💬 [Simulated] SMS sent to ${targetPhone}!\n"Appointment with Dr. ${a.doctorName || a.doctor} is confirmed for ${a.date} at ${a.time}."\n\n💡 Gateway simulation: Live SMS requires a Twilio SMS API key.`,
             {
-              duration: 6000,
+              duration: 7000,
               icon: '💬',
               style: {
                 border: '1.5px dashed #0ea5e9',
                 background: '#f0f9ff',
                 color: '#0369a1',
                 padding: '12px 16px',
-                fontSize: '12.5px',
+                fontSize: '12px',
+                lineHeight: '1.5',
                 fontWeight: 600
               },
             }

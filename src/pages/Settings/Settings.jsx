@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useAuthStore, useUIStore, useNotificationStore } from '../../store';
 import { User, Bell, Shield, Download, Trash2, Moon, Sun, Lock, Heart, Target, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { sendEmailNotification } from '../../services/emailService';
 
 const NOTIF_OPTIONS = [
   { id: 'daily_reminder', label: 'Daily mood check-in reminder', desc: 'Get reminded to log your mood each day' },
@@ -47,6 +48,29 @@ export default function Settings() {
       publicKey
     });
     toast.success('Email settings updated successfully!');
+  };
+
+  const handleSendTestEmail = async () => {
+    const target = recipientEmail || user?.email;
+    if (!target) {
+      toast.error("Please configure a valid email address first!");
+      return;
+    }
+    const tid = toast.loading("Sending test email...");
+    try {
+      const mockUser = {
+        name: name || user?.name || 'User',
+        email: target,
+      };
+      await sendEmailNotification(
+        'Test Notification 🧪',
+        'This is a test notification email sent from your MediVision AI settings panel to verify real email delivery. If you receive this, your email notifications are working perfectly!',
+        mockUser
+      );
+      toast.success("Test email dispatched!", { id: tid });
+    } catch (e) {
+      toast.error(`Failed to send test email: ${e.message}`, { id: tid });
+    }
   };
 
   const toggleNotif = (id) => setNotifications(n => ({ ...n, [id]: !n[id] }));
@@ -215,12 +239,21 @@ export default function Settings() {
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: 12, borderRadius: 12, background: 'rgba(108,99,255,0.06)', border: '1px dashed rgba(108,99,255,0.25)', fontSize: 12, color: 'var(--purple-755)', color: '#6c63ff', lineHeight: 1.5 }}>
-                  ✨ <strong>Simulated Mode Active:</strong> We will display beautiful custom animated notifications in your browser whenever emails are sent. Toggle "Custom EmailJS Integration" to connect your real inbox!
+                <div style={{ padding: 14, borderRadius: 12, background: 'rgba(16,185,129,0.06)', border: '1px dashed rgba(16,185,129,0.25)', fontSize: 12, color: '#047857', lineHeight: 1.5 }}>
+                  📧 <strong>Real Email Delivery Active:</strong> By default, we use FormSubmit.co to send real email notifications to your inbox.
+                  <br />
+                  <span style={{ fontWeight: 600 }}>Note:</span> The very first email sent to your address will contain an activation link from FormSubmit.co. You must click that link to verify your address and start receiving all alerts.
+                  <br />
+                  Toggle "Custom EmailJS Integration" if you prefer to use your own private email service credentials.
                 </div>
               )}
 
-              <button onClick={saveEmailSettings} className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 6 }}>Save Email Configuration</button>
+              <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                <button onClick={saveEmailSettings} className="btn btn-primary">Save Email Configuration</button>
+                <button onClick={handleSendTestEmail} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  🧪 Send Test Email
+                </button>
+              </div>
             </motion.div>
           )}
         </div>

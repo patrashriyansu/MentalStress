@@ -31,6 +31,13 @@ export default function EmergencySOS() {
   const [alerts, setAlerts] = useState([]);
   const { addNotification } = useHealthStore();
 
+  const [familyPhone, setFamilyPhone] = useState(() => localStorage.getItem('mindspace-emergency-contact') || '');
+
+  const saveFamilyPhone = (val) => {
+    setFamilyPhone(val);
+    localStorage.setItem('mindspace-emergency-contact', val);
+  };
+
   // Location & nearest responder unit states
   const [location, setLocation] = useState(null);
   const [locationName, setLocationName] = useState('');
@@ -249,9 +256,52 @@ export default function EmergencySOS() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Broadcast Real SOS to Family */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fef2f2', padding: 20, borderRadius: 16, border: '1px solid #fca5a5', width: '100%', maxWidth: 440, margin: '20px auto 0', textAlign: 'center' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', margin: 0 }}>🚨 Broadcast Real SOS to Family</p>
+              <p style={{ fontSize: 11, color: '#b91c1c', margin: '2px 0 8px' }}>{familyPhone ? `Send real SOS text to: ${familyPhone}` : '⚠️ Please configure an emergency family contact phone number below'}</p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button onClick={() => {
+                  const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
+                  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                  const link = `sms:${familyPhone}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
+                  window.open(link, '_blank');
+                }} disabled={!familyPhone} className="btn btn-danger" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: familyPhone ? 'pointer' : 'not-allowed', background: '#ef4444', border: 'none', color: 'white', padding: '10px', borderRadius: 10 }}>
+                  📱 Send SMS
+                </button>
+                <button onClick={() => {
+                  const cleanPhone = familyPhone.replace(/\D/g, '');
+                  const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
+                  const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+                  window.open(link, '_blank');
+                }} disabled={!familyPhone} className="btn btn-danger" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: familyPhone ? 'pointer' : 'not-allowed', background: '#ef4444', border: 'none', color: 'white', padding: '10px', borderRadius: 10 }}>
+                  💬 WhatsApp
+                </button>
+              </div>
+            </div>
+
             <button onClick={cancel} className="btn btn-secondary mx-auto" style={{ marginTop: 20 }}>Dismiss</button>
           </motion.div>
         )}
+      </div>
+
+      {/* Emergency Contact Setup */}
+      <div className="card p-5 flex flex-wrap items-center justify-between gap-4" style={{ borderRadius: 20 }}>
+        <div>
+          <p className="font-bold text-slate-800 text-sm">🚨 Emergency Contact Phone</p>
+          <p className="text-xs text-slate-400 mt-1">Specify a family member or guardian's phone number to send real SOS messages to.</p>
+        </div>
+        <div>
+          <input
+            type="tel"
+            className="input-field"
+            placeholder="Family Phone Number"
+            value={familyPhone}
+            onChange={e => saveFamilyPhone(e.target.value)}
+            style={{ padding: '8px 12px', border: '1.5px solid #cbd5e1', borderRadius: 10, width: '220px', fontSize: 13, background: 'white' }}
+          />
+        </div>
       </div>
 
       {/* Emergency Contacts */}

@@ -72,7 +72,14 @@ export default function Appointments() {
   const location = useLocation();
   const navigate = useNavigate();
   const { appointments, addAppointment, cancelAppointment, addNotification } = useHealthStore();
-  const { getDoctors } = useAuthStore();
+  const { getDoctors, user, updateUser } = useAuthStore();
+  const [dispatchPhone, setDispatchPhone] = useState('');
+
+  useEffect(() => {
+    if (user?.phone) {
+      setDispatchPhone(user.phone);
+    }
+  }, [user]);
   const registeredDoctors = getDoctors().map((d, i) => ({
     id: d.id,
     name: d.name,
@@ -136,6 +143,50 @@ export default function Appointments() {
         <p className="text-slate-500 mt-2">Your appointment with <span className="font-bold text-blue-600">{selDoc?.name}</span> is booked</p>
         <p className="text-sm mt-1 font-semibold text-slate-600">{selDate?.toDateString()} • {selTime}</p>
       </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', width: '100%', maxWidth: 380, textAlign: 'center' }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: 0 }}>📲 Mobile Dispatcher</p>
+        <p style={{ fontSize: 11, color: '#94a3b8', margin: '2px 0 4px' }}>Send a real SMS/WhatsApp receipt to your mobile device</p>
+        
+        <div style={{ marginBottom: 6, textAlign: 'left' }}>
+          <label style={{ fontSize: 10, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>Phone Number</label>
+          <input
+            type="tel"
+            placeholder="e.g. +91 98765 43210"
+            value={dispatchPhone}
+            onChange={(e) => setDispatchPhone(e.target.value)}
+            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #cbd5e1', borderRadius: 10, fontSize: 13, background: 'white' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <button onClick={() => {
+            const targetNo = dispatchPhone || user?.phone || '';
+            if (dispatchPhone && dispatchPhone !== user?.phone) {
+              updateUser({ phone: dispatchPhone });
+            }
+            const msg = `MediVision AI: Your appointment with ${selDoc?.name} is confirmed for ${selDate?.toDateString()} at ${selTime}.`;
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const link = `sms:${targetNo}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
+            window.open(link, '_blank');
+          }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: 'pointer' }}>
+            📱 Send SMS
+          </button>
+          <button onClick={() => {
+            const targetNo = dispatchPhone || user?.phone || '';
+            if (dispatchPhone && dispatchPhone !== user?.phone) {
+              updateUser({ phone: dispatchPhone });
+            }
+            const cleanPhone = targetNo.replace(/\D/g, '');
+            const msg = `MediVision AI: Your appointment with ${selDoc?.name} is confirmed for ${selDate?.toDateString()} at ${selTime}.`;
+            const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+            window.open(link, '_blank');
+          }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: 'pointer' }}>
+            💬 WhatsApp
+          </button>
+        </div>
+      </div>
+
       <div className="flex gap-3">
         <button onClick={() => { setBooked(false); setStep(1); setSelDoc(null); setSelDate(null); setSelTime(null); setBookingMode(false); }}
           className="btn btn-secondary">Go to Appointments</button>

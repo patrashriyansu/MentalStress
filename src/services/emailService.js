@@ -1,17 +1,19 @@
 import toast from 'react-hot-toast';
 
-export const sendEmailNotification = async (actionType, actionDetails) => {
+export const sendEmailNotification = async (actionType, actionDetails, customUser = null) => {
   // Read auth user from store/localStorage
-  let authUser = null;
-  const authStoreStr = localStorage.getItem('mindspace-auth');
-  if (authStoreStr) {
-    try {
-      const parsed = JSON.parse(authStoreStr);
-      if (parsed?.state?.user) {
-        authUser = parsed.state.user;
+  let authUser = customUser;
+  if (!authUser) {
+    const authStoreStr = localStorage.getItem('mindspace-auth');
+    if (authStoreStr) {
+      try {
+        const parsed = JSON.parse(authStoreStr);
+        if (parsed?.state?.user) {
+          authUser = parsed.state.user;
+        }
+      } catch (e) {
+        console.error('Error parsing auth state', e);
       }
-    } catch (e) {
-      console.error('Error parsing auth state', e);
     }
   }
 
@@ -90,16 +92,57 @@ export const sendEmailNotification = async (actionType, actionDetails) => {
     }
   }
 
-  // Fallback: Simulation toast
+  // Fallback: Send real email via FormSubmit.co free API
+  try {
+    const response = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        _subject: `MediVision AI Alert: ${actionType}`,
+        RecipientName: targetName,
+        Details: actionDetails,
+        Timestamp: new Date().toLocaleString(),
+        _honey: "", // Honeypot spam prevention
+        _captcha: "false" // Disable captcha verification page
+      })
+    });
+
+    if (response.ok) {
+      toast.success(
+        `✉️ Real Email sent to ${targetEmail}!\nCheck your inbox. (Note: The first email requires confirming your address via a FormSubmit verification link).`,
+        {
+          duration: 9000,
+          icon: '📧',
+          style: {
+            border: '1.5px solid #10b981',
+            background: '#ecfdf5',
+            color: '#065f46',
+            fontSize: '12px',
+            lineHeight: '1.5'
+          },
+        }
+      );
+      return;
+    }
+  } catch (err) {
+    console.error('FormSubmit Error:', err);
+  }
+
+  // Fallback to simulation toast if API fails
   toast.success(
-    `✉️ Email Notification sent to ${targetEmail}!\nAction: ${actionType}\nDetails: ${actionDetails.substring(0, 45)}...`,
+    `✉️ [Simulated] Email sent to ${targetEmail}!\nAction: ${actionType}\n\n💡 Set up EmailJS in Settings ⚙️ to receive real emails.`,
     {
-      duration: 5000,
+      duration: 7000,
       icon: '📧',
       style: {
         border: '1.5px dashed #6c63ff',
         background: '#f5f3ff',
         color: '#4c1d95',
+        fontSize: '12px',
+        lineHeight: '1.5'
       },
     }
   );

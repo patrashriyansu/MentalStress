@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Heart, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../store';
 import toast from 'react-hot-toast';
+import { sendEmailNotification } from '../../services/emailService';
 
 const ROLES = [
   { id: 'patient', label: 'Patient',  icon: '🧑‍💼' },
@@ -36,6 +37,8 @@ export default function AuthPage() {
   const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm]       = useState({ name: '', email: '', phone: '', password: '', specialty: 'General Physician', hospital: 'MediVision Clinic', experience: '5', fee: '500' });
+  const [recoveryUser, setRecoveryUser] = useState(null);
+  const [recoveryPhone, setRecoveryPhone] = useState('');
 
   // Social Login Simulator States
   const [socialModal, setSocialModal] = useState(null); // 'google' | 'facebook' | null
@@ -96,6 +99,7 @@ export default function AuthPage() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
     await new Promise(r => setTimeout(r, 1000));
 
@@ -131,6 +135,29 @@ export default function AuthPage() {
       login(newUser);
       setLoading(false);
       navigate(role === 'admin' ? '/admin' : role === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+
+    } else if (mode === 'forgot') {
+      const userFound = getUserByEmail(form.email.toLowerCase().trim());
+      if (!userFound) {
+        setError('No account found with this email. Please verify and try again.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        await sendEmailNotification(
+          'Password Recovery 🔑',
+          `Hello ${userFound.name},\n\nWe received a request to retrieve your password.\n\nYour account password is: ${userFound.password}\n\nIf you did not request this, please secure your account.`,
+          userFound
+        );
+        setSuccess(`Password details have been sent to ${userFound.email}! Check your inbox (or spam folder) for the verification link/message.`);
+        setRecoveryUser(userFound);
+        setRecoveryPhone(userFound.phone || '');
+      } catch (err) {
+        console.error(err);
+        setError('Failed to send recovery email. Please try again.');
+      }
+      setLoading(false);
 
     } else {
       // Login — validate against stored users
@@ -225,40 +252,44 @@ export default function AuthPage() {
               <Heart style={{ width: 26, height: 26, color: 'white' }} />
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 900, color: '#2563eb', letterSpacing: '0.05em', fontFamily: "'Poppins', sans-serif", margin: 0, textTransform: 'uppercase' }}>
-              {mode === 'login' ? 'Login' : 'Register'}
+              {mode === 'login' ? 'Login' : mode === 'forgot' ? 'Forgot Password' : 'Register'}
             </h2>
           </div>
 
           {/* Mobile mode toggle */}
-          <div className="flex md:hidden" style={{ gap: 8, marginBottom: 24, justifyContent: 'center' }}>
-            {[{ id: 'login', label: 'Login' }, { id: 'register', label: 'Sign Up' }].map(m => (
-              <button key={m.id} onClick={() => setMode(m.id)} style={{
-                padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
-                borderColor: mode === m.id ? '#2563eb' : '#e2e8f0',
-                background: mode === m.id ? '#2563eb' : 'white',
-                color: mode === m.id ? 'white' : '#64748b',
-                fontWeight: 700, fontSize: 13, cursor: 'pointer',
-              }}>{m.label}</button>
-            ))}
-          </div>
+          {mode !== 'forgot' && !success && (
+            <div className="flex md:hidden" style={{ gap: 8, marginBottom: 24, justifyContent: 'center' }}>
+              {[{ id: 'login', label: 'Login' }, { id: 'register', label: 'Sign Up' }].map(m => (
+                <button key={m.id} onClick={() => setMode(m.id)} style={{
+                  padding: '8px 20px', borderRadius: 10, border: '1.5px solid',
+                  borderColor: mode === m.id ? '#2563eb' : '#e2e8f0',
+                  background: mode === m.id ? '#2563eb' : 'white',
+                  color: mode === m.id ? 'white' : '#64748b',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                }}>{m.label}</button>
+              ))}
+            </div>
+          )}
 
           {/* Role Selector */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            {ROLES.map(r => (
-              <button key={r.id} onClick={() => setRole(r.id)} style={{
-                flex: 1, padding: '8px 4px', borderRadius: 10,
-                border: '1.5px solid', borderColor: role === r.id ? '#2563eb' : '#e8edf8',
-                background: role === r.id ? '#eff6ff' : 'white',
-                color: role === r.id ? '#2563eb' : '#94a3b8',
-                fontWeight: 700, fontSize: 11, cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                transition: 'all 0.2s',
-              }}>
-                <span style={{ fontSize: 16 }}>{r.icon}</span>
-                {r.label}
-              </button>
-            ))}
-          </div>
+          {mode !== 'forgot' && !success && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              {ROLES.map(r => (
+                <button key={r.id} onClick={() => setRole(r.id)} style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 10,
+                  border: '1.5px solid', borderColor: role === r.id ? '#2563eb' : '#e8edf8',
+                  background: role === r.id ? '#eff6ff' : 'white',
+                  color: role === r.id ? '#2563eb' : '#94a3b8',
+                  fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                  transition: 'all 0.2s',
+                }}>
+                  <span style={{ fontSize: 16 }}>{r.icon}</span>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Error / Success messages */}
           <AnimatePresence>
@@ -270,136 +301,212 @@ export default function AuthPage() {
             )}
           </AnimatePresence>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {/* Registration Helper Tip */}
+          {mode === 'register' && !success && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', background: 'rgba(37, 99, 235, 0.08)', borderRadius: 10, border: '1px solid rgba(37, 99, 235, 0.15)', fontSize: 11, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, lineHeight: 1.4 }}>
+              <span>💡</span>
+              <span><strong>Note:</strong> Register with a real email and phone to receive actual verification and booking messages on your device.</span>
+            </div>
+          )}
 
-            <AnimatePresence>
-              {mode === 'register' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                  <InputField icon={<User style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Full Name" value={form.name} onChange={setField('name')} type="text" required />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <InputField icon={<Mail style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Email" value={form.email} onChange={setField('email')} type="email" required />
-
-            <AnimatePresence>
-              {mode === 'register' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                  <InputField icon={<Phone style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Phone (optional)" value={form.phone} onChange={setField('phone')} type="tel" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {mode === 'register' && role === 'doctor' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Specialty</label>
-                    <select className="input-field" value={form.specialty} onChange={setField('specialty')} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }}>
-                      <option value="General Physician">General Physician</option>
-                      <option value="Cardiologist">Cardiologist</option>
-                      <option value="Neurologist">Neurologist</option>
-                      <option value="Dermatologist">Dermatologist</option>
-                      <option value="Orthopedic">Orthopedic</option>
-                      <option value="Diabetologist">Diabetologist</option>
-                      <option value="Psychiatrist">Psychiatrist</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Hospital / Clinic</label>
-                    <input className="input-field" placeholder="Hospital/Clinic Name" value={form.hospital} onChange={setField('hospital')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Experience (Years)</label>
-                      <input className="input-field" type="number" min="0" value={form.experience} onChange={setField('experience')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Consultation Fee (₹)</label>
-                      <input className="input-field" type="number" min="0" value={form.fee} onChange={setField('fee')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <InputField
-              icon={<Lock style={{ width: 16, height: 16, color: '#94a3b8' }} />}
-              placeholder="Password"
-              value={form.password}
-              onChange={setField('password')}
-              type={showPass ? 'text' : 'password'}
-              required
-              suffix={
-                <button type="button" onClick={() => setShowPass(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, display: 'flex' }}>
-                  {showPass ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
-                </button>
-              }
-            />
-
-            {mode === 'login' && (
-              <div style={{ textAlign: 'right', marginBottom: 20 }}>
-                <button type="button" style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  Forgot Password?
-                </button>
+          {success ? (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 14, padding: 18, color: '#065f46', fontSize: 13, lineHeight: 1.5 }}>
+                ✅ <strong>Success!</strong> {success}
               </div>
-            )}
 
-            {/* Submit */}
-            <motion.button type="submit" disabled={loading} whileTap={{ scale: 0.98 }}
-              style={{
-                width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-                background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
-                color: 'white', fontWeight: 800, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 8px 24px rgba(37,99,235,0.3)', marginBottom: 20,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                opacity: loading ? 0.7 : 1,
-                letterSpacing: '0.04em',
-              }}>
-              {loading ? (
-                <>
-                  <svg className="animate-spin" style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3" />
-                    <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
-                </>
-              ) : (
-                <>{mode === 'login' ? 'LOGIN' : 'CREATE ACCOUNT'} <ArrowRight style={{ width: 16, height: 16 }} /></>
+              {recoveryUser && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: 0 }}>📲 SMS / WhatsApp Recovery</p>
+                  <p style={{ fontSize: 11, color: '#94a3b8', margin: '2px 0 8px' }}>Send your password directly to your phone number</p>
+                  
+                  <div style={{ marginBottom: 6, textAlign: 'left' }}>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>Phone Number</label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. +91 98765 43210"
+                      value={recoveryPhone}
+                      onChange={(e) => setRecoveryPhone(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #cbd5e1', borderRadius: 10, fontSize: 13, background: 'white' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <button onClick={() => {
+                      const msg = `MediVision AI: Hello ${recoveryUser.name}, your account password is: ${recoveryUser.password}`;
+                      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                      const link = `sms:${recoveryPhone}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
+                      window.open(link, '_blank');
+                    }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: 'pointer' }}>
+                      📱 Send SMS
+                    </button>
+                    <button onClick={() => {
+                      const cleanPhone = recoveryPhone.replace(/\D/g, '');
+                      const msg = `MediVision AI: Hello ${recoveryUser.name}, your account password is: ${recoveryUser.password}`;
+                      const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+                      window.open(link, '_blank');
+                    }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: 'pointer' }}>
+                      💬 WhatsApp
+                    </button>
+                  </div>
+                </div>
               )}
-            </motion.button>
-          </form>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <div style={{ flex: 1, height: 1, background: '#e8edf8' }} />
-            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>Or Login with</span>
-            <div style={{ flex: 1, height: 1, background: '#e8edf8' }} />
-          </div>
+              <button onClick={() => { setMode('login'); setSuccess(''); setRecoveryUser(null); }} className="btn btn-primary" style={{ width: '100%' }}>
+                Back to Login Screen
+              </button>
+            </motion.div>
+          ) : (
+            <>
+              {/* Form */}
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-          {/* Social buttons */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={() => setSocialModal('google')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
-              <GoogleIcon /> Google
-            </button>
-            <button type="button" onClick={() => setSocialModal('facebook')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
-              <FacebookIcon /> Facebook
-            </button>
-          </div>
+                <AnimatePresence>
+                  {mode === 'register' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                      <InputField icon={<User style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Full Name" value={form.name} onChange={setField('name')} type="text" required />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-          {/* Mode switch */}
-          <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#64748b', fontWeight: 500 }}>
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <button type="button" onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError(''); }}
-              style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}>
-              {mode === 'login' ? 'Sign Up' : 'Sign In'}
-            </button>
-          </p>
+                <InputField icon={<Mail style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Email" value={form.email} onChange={setField('email')} type="email" required />
+
+                <AnimatePresence>
+                  {mode === 'register' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+                      <InputField icon={<Phone style={{ width: 16, height: 16, color: '#94a3b8' }} />} placeholder="Phone (optional)" value={form.phone} onChange={setField('phone')} type="tel" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {mode === 'register' && role === 'doctor' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Specialty</label>
+                        <select className="input-field" value={form.specialty} onChange={setField('specialty')} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }}>
+                          <option value="General Physician">General Physician</option>
+                          <option value="Cardiologist">Cardiologist</option>
+                          <option value="Neurologist">Neurologist</option>
+                          <option value="Dermatologist">Dermatologist</option>
+                          <option value="Orthopedic">Orthopedic</option>
+                          <option value="Diabetologist">Diabetologist</option>
+                          <option value="Psychiatrist">Psychiatrist</option>
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Hospital / Clinic</label>
+                        <input className="input-field" placeholder="Hospital/Clinic Name" value={form.hospital} onChange={setField('hospital')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Experience (Years)</label>
+                          <input className="input-field" type="number" min="0" value={form.experience} onChange={setField('experience')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', display: 'block' }}>Consultation Fee (₹)</label>
+                          <input className="input-field" type="number" min="0" value={form.fee} onChange={setField('fee')} required style={{ padding: '8px 12px', border: '1.5px solid #e8edf8', borderRadius: 10 }} />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {mode !== 'forgot' && (
+                  <InputField
+                    icon={<Lock style={{ width: 16, height: 16, color: '#94a3b8' }} />}
+                    placeholder="Password"
+                    value={form.password}
+                    onChange={setField('password')}
+                    type={showPass ? 'text' : 'password'}
+                    required
+                    suffix={
+                      <button type="button" onClick={() => setShowPass(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, display: 'flex' }}>
+                        {showPass ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
+                      </button>
+                    }
+                  />
+                )}
+
+                {mode === 'login' && (
+                  <div style={{ textAlign: 'right', marginBottom: 20 }}>
+                    <button type="button" onClick={() => { setMode('forgot'); setError(''); setSuccess(''); setRecoveryUser(null); }} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <motion.button type="submit" disabled={loading} whileTap={{ scale: 0.98 }}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                    background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
+                    color: 'white', fontWeight: 800, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 8px 24px rgba(37,99,235,0.3)', marginBottom: 20,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    opacity: loading ? 0.7 : 1,
+                    letterSpacing: '0.04em',
+                  }}>
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin" style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3" />
+                        <path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      {mode === 'login' ? 'Signing In...' : mode === 'forgot' ? 'Retrieving Password...' : 'Creating Account...'}
+                    </>
+                  ) : (
+                    <>{mode === 'login' ? 'LOGIN' : mode === 'forgot' ? 'RETRIEVE PASSWORD' : 'CREATE ACCOUNT'} <ArrowRight style={{ width: 16, height: 16 }} /></>
+                  )}
+                </motion.button>
+              </form>
+
+              {/* Divider */}
+              {mode !== 'forgot' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ flex: 1, height: 1, background: '#e8edf8' }} />
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>Or Login with</span>
+                  <div style={{ flex: 1, height: 1, background: '#e8edf8' }} />
+                </div>
+              )}
+
+              {/* Social buttons */}
+              {mode !== 'forgot' && (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" onClick={() => setSocialModal('google')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
+                    <GoogleIcon /> Google
+                  </button>
+                  <button type="button" onClick={() => setSocialModal('facebook')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 12, border: '1.5px solid #e8edf8', background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#374151', transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#d1d5db'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#e8edf8'}>
+                    <FacebookIcon /> Facebook
+                  </button>
+                </div>
+              )}
+
+              {/* Mode switch */}
+              {mode !== 'forgot' ? (
+                <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                  {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                  <button type="button" onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError(''); }}
+                    style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}>
+                    {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                  </button>
+                </p>
+              ) : (
+                <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                  Remember your password?{' '}
+                  <button type="button" onClick={() => { setMode('login'); setError(''); }}
+                    style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}>
+                    Sign In
+                  </button>
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
 
