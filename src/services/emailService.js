@@ -102,9 +102,10 @@ export const sendEmailNotification = async (actionType, actionDetails, customUse
       },
       body: JSON.stringify({
         _subject: `MediVision AI Alert: ${actionType}`,
-        RecipientName: targetName,
-        Details: actionDetails,
-        Timestamp: new Date().toLocaleString(),
+        "User Name": targetName,
+        "Notification": actionType,
+        "Details": actionDetails,
+        "Timestamp": new Date().toLocaleString(),
         _honey: "", // Honeypot spam prevention
         _captcha: "false" // Disable captcha verification page
       })
