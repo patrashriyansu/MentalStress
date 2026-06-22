@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Phone, MapPin, Clock, Shield, Siren, CheckCircle, Loader } from 'lucide-react';
 import { useHealthStore } from '../../store';
-import { sendRealSMS } from '../../services/smsService';
+
 
 const CONTACTS = [
   { name: 'Ambulance', number: '102', color: '#ef4444', bg: '#fff1f2', icon: '🚑' },
@@ -201,12 +201,6 @@ export default function EmergencySOS() {
       newAlerts.forEach((a, i) => setTimeout(() => setAlerts(prev => [...prev, a]), i * 600));
       addNotification({ title: '🚨 Emergency SOS Triggered', message: 'Help is on the way!', type: 'emergency' });
 
-      // Automatically dispatch a real background SMS to the emergency family contact
-      if (familyPhone) {
-        const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
-        sendRealSMS(familyPhone, msg);
-      }
-
       return;
     }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
@@ -266,16 +260,17 @@ export default function EmergencySOS() {
             </div>
 
             {/* Broadcast Real SOS to Family */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#fef2f2', padding: 20, borderRadius: 16, border: '1px solid #fca5a5', width: '100%', maxWidth: 440, margin: '20px auto 0', textAlign: 'center' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', margin: 0 }}>🚨 Broadcast Real SOS to Family</p>
-              <p style={{ fontSize: 11, color: '#b91c1c', margin: '2px 0 8px' }}>{familyPhone ? `Send real SOS text to: ${familyPhone}` : '⚠️ Please configure an emergency family contact phone number below'}</p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, background: 'linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%)', padding: 24, borderRadius: 20, border: '2px solid #ef4444', width: '100%', maxWidth: 440, margin: '20px auto 0', textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(239,68,68,0.15)' }}>
+              <p style={{ fontSize: 13, fontWeight: 900, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>🚨 Broadcast Real SOS to Family</p>
+              <p style={{ fontSize: 11.5, color: '#7f1d1d', margin: '2px 0 8px', lineHeight: 1.4 }}>{familyPhone ? `Open your messaging app to immediately dispatch this real alert to: ${familyPhone}` : '⚠️ Please enter an emergency contact phone number in the field below'}</p>
+              
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
                 <button onClick={() => {
                   const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
                   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                   const link = `sms:${familyPhone}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
                   window.open(link, '_blank');
-                }} disabled={!familyPhone} className="btn btn-danger" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: familyPhone ? 'pointer' : 'not-allowed', background: '#ef4444', border: 'none', color: 'white', padding: '10px', borderRadius: 10 }}>
+                }} disabled={!familyPhone} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', cursor: familyPhone ? 'pointer' : 'not-allowed', padding: '10px 14px', borderRadius: 12, background: '#ef4444', border: '1.5px solid #ef4444', color: 'white', fontWeight: 700, opacity: familyPhone ? 1 : 0.5 }}>
                   📱 Send SMS
                 </button>
                 <button onClick={() => {
@@ -286,7 +281,7 @@ export default function EmergencySOS() {
                   const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
                   const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
                   window.open(link, '_blank');
-                }} disabled={!familyPhone} className="btn btn-danger" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: familyPhone ? 'pointer' : 'not-allowed', background: '#ef4444', border: 'none', color: 'white', padding: '10px', borderRadius: 10 }}>
+                }} disabled={!familyPhone} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', cursor: familyPhone ? 'pointer' : 'not-allowed', padding: '10px 14px', borderRadius: 12, background: '#25d366', border: '1.5px solid #25d366', color: 'white', fontWeight: 700, opacity: familyPhone ? 1 : 0.5 }}>
                   💬 WhatsApp
                 </button>
               </div>

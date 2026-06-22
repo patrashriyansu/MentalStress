@@ -5,7 +5,7 @@ import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Heart, CheckCircle } 
 import { useAuthStore } from '../../store';
 import toast from 'react-hot-toast';
 import { sendEmailNotification } from '../../services/emailService';
-import { sendRealSMS } from '../../services/smsService';
+
 
 const ROLES = [
   { id: 'patient', label: 'Patient',  icon: '🧑‍💼' },
@@ -154,12 +154,6 @@ export default function AuthPage() {
         setSuccess(`Password details have been sent to ${userFound.email}! Check your inbox (or spam folder) for the verification link/message.`);
         setRecoveryUser(userFound);
         setRecoveryPhone(userFound.phone || '');
-
-        // Automatically dispatch a real background SMS if the phone is set
-        if (userFound.phone) {
-          const msg = `MediVision AI: Hello ${userFound.name}, your account password is: ${userFound.password}`;
-          sendRealSMS(userFound.phone, msg);
-        }
       } catch (err) {
         console.error(err);
         setError('Failed to send recovery email. Please try again.');
@@ -324,28 +318,28 @@ export default function AuthPage() {
               </div>
 
               {recoveryUser && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', margin: 0 }}>📲 SMS / WhatsApp Recovery</p>
-                  <p style={{ fontSize: 11, color: '#94a3b8', margin: '2px 0 8px' }}>Send your password directly to your phone number</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', padding: 24, borderRadius: 20, border: '2px solid #6c63ff', width: '100%', textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(108,99,255,0.15)' }}>
+                  <p style={{ fontSize: 13, fontWeight: 900, color: '#6c63ff', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>📲 SMS & WhatsApp Recovery Dispatcher</p>
+                  <p style={{ fontSize: 11.5, color: '#64748b', margin: '2px 0 8px', lineHeight: 1.4 }}>Click below to open your messaging app and send the password details directly to your device.</p>
                   
                   <div style={{ marginBottom: 6, textAlign: 'left' }}>
-                    <label style={{ fontSize: 10, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4 }}>Phone Number</label>
+                    <label style={{ fontSize: 10, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Recipient Phone Number</label>
                     <input
                       type="tel"
                       placeholder="e.g. +91 98765 43210"
                       value={recoveryPhone}
                       onChange={(e) => setRecoveryPhone(e.target.value)}
-                      style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #cbd5e1', borderRadius: 10, fontSize: 13, background: 'white' }}
+                      style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: 12, fontSize: 13.5, background: 'white', color: '#1e293b', fontWeight: 600, outline: 'none' }}
                     />
                   </div>
 
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
                     <button onClick={() => {
                       const msg = `MediVision AI: Hello ${recoveryUser.name}, your account password is: ${recoveryUser.password}`;
                       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
                       const link = `sms:${recoveryPhone}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
                       window.open(link, '_blank');
-                    }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: 'pointer' }}>
+                    }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', cursor: 'pointer', padding: '10px 14px', borderRadius: 12, background: 'white', border: '1.5px solid #e2e8f0', color: '#334155', fontWeight: 700 }}>
                       📱 Send SMS
                     </button>
                     <button onClick={() => {
@@ -356,7 +350,7 @@ export default function AuthPage() {
                       const msg = `MediVision AI: Hello ${recoveryUser.name}, your account password is: ${recoveryUser.password}`;
                       const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
                       window.open(link, '_blank');
-                    }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', cursor: 'pointer' }}>
+                    }} className="btn btn-secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8, flex: 1, justifyContent: 'center', cursor: 'pointer', padding: '10px 14px', borderRadius: 12, background: 'white', border: '1.5px solid #e2e8f0', color: '#334155', fontWeight: 700 }}>
                       💬 WhatsApp
                     </button>
                   </div>
