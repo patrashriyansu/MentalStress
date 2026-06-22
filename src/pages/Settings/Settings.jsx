@@ -67,7 +67,20 @@ export default function Settings() {
         'This is a test notification email sent from your MediVision AI settings panel to verify real email delivery. If you receive this, your email notifications are working perfectly!',
         mockUser
       );
-      toast.success("Test email dispatched!", { id: tid });
+      toast.success(
+        `🧪 Test Email Dispatched to ${target}!\n\n⚠️ IMPORTANT: If this is the first email to this address, you MUST open your inbox, check for the FormSubmit activation link (check Spam/Junk folder), and click "Confirm" to receive future alerts.`,
+        {
+          id: tid,
+          duration: 12000,
+          style: {
+            border: '1.5px solid #3b82f6',
+            background: '#eff6ff',
+            color: '#1e3a8a',
+            fontSize: '12px',
+            lineHeight: '1.5'
+          }
+        }
+      );
     } catch (e) {
       toast.error(`Failed to send test email: ${e.message}`, { id: tid });
     }

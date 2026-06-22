@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Phone, MapPin, Clock, Shield, Siren, CheckCircle, Loader } from 'lucide-react';
 import { useHealthStore } from '../../store';
+import { sendRealSMS } from '../../services/smsService';
 
 const CONTACTS = [
   { name: 'Ambulance', number: '102', color: '#ef4444', bg: '#fff1f2', icon: '🚑' },
@@ -194,16 +195,23 @@ export default function EmergencySOS() {
         `🏥 Emergency ward at ${hName} prepped & notified`,
         `👮 SOS Alert dispatched to ${pName} (${pDist} km away)`,
         `🚒 Fire responders alerted at ${fName} (${fDist} km away)`,
-        '📱 Simulated SMS broadcasted to your emergency contacts',
+        familyPhone ? `📱 Automated SMS broadcasted to: ${familyPhone}` : '📱 Simulated SMS broadcasted to your emergency contacts',
         '📍 Live GPS coordinates shared with responders',
       ];
       newAlerts.forEach((a, i) => setTimeout(() => setAlerts(prev => [...prev, a]), i * 600));
       addNotification({ title: '🚨 Emergency SOS Triggered', message: 'Help is on the way!', type: 'emergency' });
+
+      // Automatically dispatch a real background SMS to the emergency family contact
+      if (familyPhone) {
+        const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
+        sendRealSMS(familyPhone, msg);
+      }
+
       return;
     }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [countdown, nearestServices]);
+  }, [countdown, nearestServices, familyPhone, locationName, location]);
 
   const cancel = () => { setCountdown(null); setTriggered(false); setAlerts([]); };
 

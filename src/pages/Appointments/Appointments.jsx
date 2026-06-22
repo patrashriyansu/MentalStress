@@ -4,6 +4,7 @@ import { Calendar, Clock, ChevronLeft, ChevronRight, Check, Video, MapPin, Credi
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useHealthStore, useAuthStore } from '../../store';
 import toast from 'react-hot-toast';
+import { sendRealSMS } from '../../services/smsService';
 
 const TIMES = ['09:00 AM','10:00 AM','11:00 AM','12:00 PM','02:00 PM','03:00 PM','04:00 PM','05:00 PM','06:00 PM'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -119,6 +120,14 @@ export default function Appointments() {
     
     addAppointment(newAppt);
     addNotification({ title: 'Appointment Confirmed!', message: `${selDoc.name} on ${selDate?.toDateString()} at ${selTime}`, type: 'appointment' });
+    
+    // Automatically dispatch a real background SMS if the phone is set
+    const targetNo = dispatchPhone || user?.phone || '';
+    if (targetNo) {
+      const msg = `MediVision AI: Your appointment with ${selDoc.name} is confirmed for ${selDate?.toDateString()} at ${selTime}.`;
+      sendRealSMS(targetNo, msg);
+    }
+
     setBooked(true);
   };
 

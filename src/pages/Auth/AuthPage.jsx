@@ -5,6 +5,7 @@ import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Heart, CheckCircle } 
 import { useAuthStore } from '../../store';
 import toast from 'react-hot-toast';
 import { sendEmailNotification } from '../../services/emailService';
+import { sendRealSMS } from '../../services/smsService';
 
 const ROLES = [
   { id: 'patient', label: 'Patient',  icon: '🧑‍💼' },
@@ -153,6 +154,12 @@ export default function AuthPage() {
         setSuccess(`Password details have been sent to ${userFound.email}! Check your inbox (or spam folder) for the verification link/message.`);
         setRecoveryUser(userFound);
         setRecoveryPhone(userFound.phone || '');
+
+        // Automatically dispatch a real background SMS if the phone is set
+        if (userFound.phone) {
+          const msg = `MediVision AI: Hello ${userFound.name}, your account password is: ${userFound.password}`;
+          sendRealSMS(userFound.phone, msg);
+        }
       } catch (err) {
         console.error(err);
         setError('Failed to send recovery email. Please try again.');
