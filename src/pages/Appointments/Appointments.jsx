@@ -186,7 +186,10 @@ export default function Appointments() {
             if (dispatchPhone && dispatchPhone !== user?.phone) {
               updateUser({ phone: dispatchPhone });
             }
-            const cleanPhone = targetNo.replace(/\D/g, '');
+            let cleanPhone = targetNo.replace(/\D/g, '');
+            if (cleanPhone.length === 10) {
+              cleanPhone = '91' + cleanPhone;
+            }
             const msg = `MediVision AI: Your appointment with ${selDoc?.name} is confirmed for ${selDate?.toDateString()} at ${selTime}.`;
             const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
             window.open(link, '_blank');

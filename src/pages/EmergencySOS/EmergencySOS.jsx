@@ -279,7 +279,10 @@ export default function EmergencySOS() {
                   📱 Send SMS
                 </button>
                 <button onClick={() => {
-                  const cleanPhone = familyPhone.replace(/\D/g, '');
+                  let cleanPhone = familyPhone.replace(/\D/g, '');
+                  if (cleanPhone.length === 10) {
+                    cleanPhone = '91' + cleanPhone;
+                  }
                   const msg = `EMERGENCY SOS: I need help! My current location is: ${locationName || 'Unknown'}. Coordinates: ${location?.lat || ''}, ${location?.lng || ''}. Help me!`;
                   const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
                   window.open(link, '_blank');

@@ -349,7 +349,10 @@ export default function AuthPage() {
                       📱 Send SMS
                     </button>
                     <button onClick={() => {
-                      const cleanPhone = recoveryPhone.replace(/\D/g, '');
+                      let cleanPhone = recoveryPhone.replace(/\D/g, '');
+                      if (cleanPhone.length === 10) {
+                        cleanPhone = '91' + cleanPhone;
+                      }
                       const msg = `MediVision AI: Hello ${recoveryUser.name}, your account password is: ${recoveryUser.password}`;
                       const link = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
                       window.open(link, '_blank');
